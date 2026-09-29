@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "intro_id": "series_intro",
+  "series_id": "pamuk_tiltu_ve_kiko_orman_dostlari",
+  "revision": 1,
+  "status": "draft",
+  "duration_sec": 5,
+  "character_ids": [
+    "pamuk",
+    "tiltu",
+    "ciftci_amca",
+    "yavru_tavsanlar"
+  ],
+  "location_id": "pamuk_un_bahcesi",
+  "visual_description": "Karakterler Pamuk'un bahçesi önünde neşeli bir şekilde dururlar",
+  "action_description": "Karakterler zıplayıp dans ederler.",
+  "fixed_text": "Pamuk, Tiltu ve Kiko Orman Dostları",
+  "audio_description": "Seri müziği: assets/muzik.mp3 (intro/outro bu parçadan kullanır)",
+  "generation": {}
+}

@@ -1,0 +1,145 @@
+{
+  "series_id": "pamuk_tiltu_ve_kiko_orman_dostlari",
+  "characters": [
+    {
+      "character_id": "pamuk",
+      "name": "Pamuk",
+      "aliases": [],
+      "type": "Tavşan",
+      "role": "main",
+      "first_seen_episode": 1,
+      "visual_identity": {
+        "body": "Küçük ve tombul tavşan bedeni",
+        "fur_or_skin": "Beyaz, pamuk gibi yumuşak tüyler",
+        "face": "Yuvarlak, sevimli yüz",
+        "eyes": "İri, parlak gözler",
+        "distinctive_features": "Uzun dik kulaklar, küçük pofuduk kuyruk"
+      },
+      "default_clothing": "kahverengi tulum",
+      "personality": [
+        "Gururlu",
+        "Paylaşmayı öğrenen",
+        "Sahiplenici başlangıçta",
+        "İyi kalpli"
+      ],
+      "speech_style": "Basit, içten, çocuksu cümleler",
+      "voice_description": "Yumuşak, tiz ve sevimli bir ses",
+      "consistency_rules": [
+        "Her zaman beyaz tüylü tavşan olarak çizilmeli",
+        "kıyafeti değişmemeli",
+        "Bahçesiyle ve kulübesiyle ilişkilendirilmeli",
+        "Hikâye sonunda paylaşmayı öğrenen karakter olarak tutarlı davranmalı"
+      ]
+    },
+    {
+      "character_id": "tiltu",
+      "name": "Tiltu",
+      "aliases": [],
+      "type": "Tilki",
+      "role": "recurring",
+      "first_seen_episode": 1,
+      "visual_identity": {
+        "body": "Küçük, çevik beden",
+        "fur_or_skin": "Kahverengi tonlarda, göğüs kısmı sarı renkte yumuşak tüyler",
+        "face": "Sevimli, arkadaşça yüz ifadesi",
+        "eyes": "Canlı, meraklı gözler",
+        "distinctive_features": "Pamuk'un yakın arkadaşı"
+      },
+      "default_clothing": "turuncu yelek ve kırmızı atkı",
+      "personality": [
+        "Paylaşmayı teşvik eden",
+        "Sadık arkadaş",
+        "Sabırlı"
+      ],
+      "speech_style": "Öğüt verici, dostça konuşma tarzı",
+      "voice_description": "Sıcak, teşvik edici bir ses tonu",
+      "consistency_rules": [
+        "Pamuk'un yakın arkadaşı olarak sürekli yanında görünmeli",
+        "Turuncu yeleği ve kırmızı atkısı değişmemeli",
+        "Paylaşma temasını hatırlatan karakter olarak tutarlı kalmalı"
+      ]
+    },
+    {
+      "character_id": "kiko",
+      "name": "Kiko",
+      "aliases": [],
+      "type": "Papağan",
+      "role": "main",
+      "first_seen_episode": null,
+      "visual_identity": {
+        "body": "Küçük, renkli papağan bedeni",
+        "fur_or_skin": "Yeşil tüyler, mavi kanatlar",
+        "face": "Sevimli papağan yüzü",
+        "eyes": "Canlı, neşeli gözler",
+        "distinctive_features": "Sarı gagası"
+      },
+      "default_clothing": "sevimli kırmızı minik yelek ve hasır şapka",
+      "personality": [
+        "Meraklı",
+        "Neşeli",
+        "Konuşkan"
+      ],
+      "speech_style": "Hızlı, neşeli ve meraklı konuşma",
+      "voice_description": "Yüksek perdeli, hızlı konuşan ses",
+      "consistency_rules": [
+        "Yeşil tüyleri, sarı gagası ve mavi kanatları sabit kalmalı",
+        "Kırmızı minik yeleği ve hasır şapkası değişmemeli"
+      ]
+    },
+    {
+      "character_id": "ciftci_amca",
+      "name": "Çiftçi Amca",
+      "aliases": [],
+      "type": "İnsan",
+      "role": "supporting",
+      "first_seen_episode": 1,
+      "visual_identity": {
+        "body": "Orta yaşlı, güçlü yapılı bir çiftçi bedeni",
+        "fur_or_skin": "Güneşten yanmış, esmer ten",
+        "face": "Sıcak ve babacan yüz ifadesi",
+        "eyes": "Sevecen, yumuşak bakışlı gözler",
+        "distinctive_features": "Yaşlılığı çağrıştıran hafif kırışıklıklar"
+      },
+      "default_clothing": "Basit çiftçi kıyafeti, şapka",
+      "personality": [
+        "Cömert",
+        "Yardımsever",
+        "Anlayışlı"
+      ],
+      "speech_style": "Sakin, öğretici ve nazik konuşma",
+      "voice_description": "Derin, sıcak ve güven verici bir ses",
+      "consistency_rules": [
+        "Her zaman tarlasıyla ve tohumlarla ilişkilendirilmeli",
+        "Yardımsever ve cömert tavrı korunmalı"
+      ]
+    },
+    {
+      "character_id": "yavru_tavsanlar",
+      "name": "Yavru Tavşanlar",
+      "aliases": [],
+      "type": "Tavşan",
+      "role": "supporting",
+      "first_seen_episode": 1,
+      "visual_identity": {
+        "body": "Küçük, minik tavşan bedenleri",
+        "fur_or_skin": "Kahverengi veya gri tonlarda yumuşak tüyler",
+        "face": "Masum, küçük yüzler",
+        "eyes": "Büyük, mahzun gözler",
+        "distinctive_features": "Zayıf ve aç görünümlü halleri"
+      },
+      "default_clothing": "rengarenk askılı tulumlar",
+      "personality": [
+        "Aç",
+        "Üzgün",
+        "Masum"
+      ],
+      "speech_style": "Yok/az konuşma, çoğunlukla davranışlarla ifade",
+      "voice_description": "Zayıf, hafif ve ürkek sesler",
+      "consistency_rules": [
+        "Grup halinde ve zayıf/aç görünümleriyle tutarlı olmalı",
+        "Rengarenk askılı tulumları değişmemeli",
+        "Pamuk'un havuçlarını yiyen karakterler olarak sabit kalmalı"
+      ]
+    }
+  ]
+}

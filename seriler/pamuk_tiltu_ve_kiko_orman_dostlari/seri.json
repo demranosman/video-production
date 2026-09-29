@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "series_id": "pamuk_tiltu_ve_kiko_orman_dostlari",
+  "name": "Pamuk, Tiltu ve Kiko Orman Dostları",
+  "description": "Pamuk tavşan, Tiltu tilki ve Kiko papağan orman dostları eğitici masallar",
+  "target_audience": "Çocuk Masalları",
+  "language": "tr",
+  "visual_style": "Sinematik 3D animasyon, yumuşak ışık, canlı renkler",
+  "default_aspect_ratio": "16:9",
+  "created_at": ""
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "outro_id": "series_outro",
+  "series_id": "pamuk_tiltu_ve_kiko_orman_dostlari",
+  "revision": 1,
+  "status": "draft",
+  "duration_sec": 7,
+  "character_ids": [
+    "pamuk",
+    "tiltu",
+    "ciftci_amca",
+    "yavru_tavsanlar"
+  ],
+  "location_id": "pamuk_un_bahcesi",
+  "visual_description": "Tüm karakterler Pamuk'un bahçesinde el sallarlar.",
+  "action_description": "Karakterlerin hepsi el sallar.",
+  "fixed_text": "Hoşçakalınnn. Yeni masalda görüşmek üzere.",
+  "call_to_action": "",
+  "audio_description": "Seri müziği: assets/muzik.mp3 (intro/outro bu parçadan kullanır)",
+  "generation": {}
+}

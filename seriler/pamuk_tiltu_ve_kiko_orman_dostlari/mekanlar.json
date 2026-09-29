@@ -1,0 +1,110 @@
+{
+  "series_id": "pamuk_tiltu_ve_kiko_orman_dostlari",
+  "locations": [
+    {
+      "location_id": "pamuk_un_bahcesi",
+      "name": "Pamuk'un Bahçesi",
+      "aliases": [
+        "Bahçe"
+      ],
+      "first_seen_episode": 1,
+      "visual_identity": {
+        "environment": "Geniş, düzenli bir sebze ve çiçek bahçesi",
+        "ground": "Yumuşak, verimli toprak",
+        "landmarks": [
+          "Havuç tarhları",
+          "Lahana tarhları",
+          "Renkli çiçek grupları"
+        ],
+        "color_palette": [
+          "Yeşil",
+          "Turuncu",
+          "Mor",
+          "Sarı"
+        ],
+        "default_lighting": "Gündüz, doğal güneş ışığı",
+        "atmosphere": "Huzurlu ve bereketli"
+      },
+      "consistency_rules": [
+        "Havuç, lahana ve çiçeklerin bulunduğu düzenli bir bahçe olarak sabit kalmalı",
+        "Pamuk'un kulübesine yakın konumlandırılmalı"
+      ]
+    },
+    {
+      "location_id": "pamuk_un_kulubesi",
+      "name": "Pamuk'un Kulübesi",
+      "aliases": [
+        "Kulübe"
+      ],
+      "first_seen_episode": 1,
+      "visual_identity": {
+        "environment": "Orman yolunun kenarında küçük, sevimli bir kulübe",
+        "ground": "Toprak zemin, kulübe çevresinde çim",
+        "landmarks": [
+          "Ahşap kapı",
+          "Küçük pencereler"
+        ],
+        "color_palette": [
+          "Kahverengi",
+          "Yeşil"
+        ],
+        "default_lighting": "Gündüz doğal ışık, akşamları sıcak iç ışık",
+        "atmosphere": "Sıcak ve güvenli"
+      },
+      "consistency_rules": [
+        "Orman yoluna yakın konumda sabit kalmalı",
+        "Pamuk'un evi olarak tutarlı gösterilmeli"
+      ]
+    },
+    {
+      "location_id": "orman_yolu",
+      "name": "Orman Yolu",
+      "aliases": [],
+      "first_seen_episode": 1,
+      "visual_identity": {
+        "environment": "Ağaçlarla çevrili doğal bir yol",
+        "ground": "Toprak ve yapraklarla kaplı patika",
+        "landmarks": [
+          "Ağaçlar",
+          "Çalılıklar"
+        ],
+        "color_palette": [
+          "Yeşil",
+          "Kahverengi"
+        ],
+        "default_lighting": "Gündüz, ağaç gölgeleri arasından süzülen ışık",
+        "atmosphere": "Sakin ve doğal"
+      },
+      "consistency_rules": [
+        "Pamuk'un kulübesi ile Çiftçi Amca'nın tarlası arasında bağlantı sağlayan yol olarak tutarlı kalmalı"
+      ]
+    },
+    {
+      "location_id": "ciftci_amca_nin_tarlasi",
+      "name": "Çiftçi Amca'nın Tarlası",
+      "aliases": [
+        "Tarla"
+      ],
+      "first_seen_episode": 1,
+      "visual_identity": {
+        "environment": "Geniş, ekili bir tarım arazisi",
+        "ground": "Sürülmüş, verimli toprak",
+        "landmarks": [
+          "Ekin sıraları",
+          "Tohum yatakları"
+        ],
+        "color_palette": [
+          "Kahverengi",
+          "Yeşil",
+          "Sarı"
+        ],
+        "default_lighting": "Gündüz, açık ve aydınlık",
+        "atmosphere": "Çalışkan ve bereketli"
+      },
+      "consistency_rules": [
+        "Çiftçi Amca'nın çalıştığı geniş tarım alanı olarak sabit kalmalı",
+        "Yavru tavşanların bulunduğu yer olarak tutarlı gösterilmeli"
+      ]
+    }
+  ]
+}

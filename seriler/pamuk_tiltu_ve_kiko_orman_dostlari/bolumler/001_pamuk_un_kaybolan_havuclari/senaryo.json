@@ -1,0 +1,294 @@
+{
+  "schema_version": 1,
+  "series_id": "pamuk_tiltu_ve_kiko_orman_dostlari",
+  "episode": {
+    "episode_no": 1,
+    "title": "Pamuk'un Kaybolan Havuçları",
+    "summary": "",
+    "moral": ""
+  },
+  "intro_id": "series_intro",
+  "outro_id": "series_outro",
+  "scenes": [
+    {
+      "scene_id": "scene_001",
+      "order": 1,
+      "title": "Pamuk'un Bahçesi ve Gururu",
+      "source_excerpt": "Pamuk'un geniş bahçesinde havuçlar, lahanalar, çiçekler vardı. Orman yolunun biraz ilerisinde kulübesinde yaşıyordu. Onları her gün sayar ve gurur duyardı.",
+      "location_id": "pamuk_un_bahcesi",
+      "character_ids": [
+        "pamuk"
+      ],
+      "character_states": {
+        "pamuk": {
+          "emotion": "gururlu",
+          "action": "havuçları ve lahanaları sayıyor",
+          "temporary_clothing": null
+        }
+      },
+      "location_state": {
+        "time_of_day": "sabah",
+        "weather": "güneşli",
+        "temporary_details": [
+          "dizi dizi havuçlar",
+          "yemyeşil lahanalar",
+          "renkli çiçekler"
+        ]
+      },
+      "story_event": "Pamuk bahçesindeki sebzeleri ve çiçekleri gururla sayar.",
+      "narration": "Pamuk'un geniş bahçesinde havuçlar, lahanalar ve rengarenk çiçekler vardı. Orman yolunun biraz ilerisindeki küçük kulübesinde yaşayan Pamuk, her sabah bahçesindekileri tek tek sayar ve büyük bir gururla bakardı.",
+      "dialogue": [],
+      "visual_description": "Geniş, güneşli bir bahçe; düzenli sıralar hâlinde havuçlar ve lahanalar, rengarenk çiçekler arasında Pamuk parmağıyla sayarak gezinir. Arka planda küçük ahşap kulübe görünür.",
+      "estimated_duration_sec": 12
+    },
+    {
+      "scene_id": "scene_002",
+      "order": 2,
+      "title": "Tiltu'nun Önerisi",
+      "source_excerpt": "Tiltu ise Pamuk'a bahçesindekileri paylaşmasını söylerdi.",
+      "location_id": "pamuk_un_bahcesi",
+      "character_ids": [
+        "pamuk",
+        "tiltu"
+      ],
+      "character_states": {
+        "pamuk": {
+          "emotion": "biraz isteksiz",
+          "action": "bahçesine bakıyor",
+          "temporary_clothing": null
+        },
+        "tiltu": {
+          "emotion": "nazik ve tavsiye verici",
+          "action": "Pamuk'a doğru konuşuyor",
+          "temporary_clothing": null
+        }
+      },
+      "location_state": {
+        "time_of_day": "sabah",
+        "weather": "güneşli",
+        "temporary_details": []
+      },
+      "story_event": "Tiltu, Pamuk'a bahçesindekileri başkalarıyla paylaşmasını önerir.",
+      "narration": "Ama arkadaşı Tiltu, Pamuk'a hep aynı şeyi söylerdi.",
+      "dialogue": [
+        {
+          "character_id": "tiltu",
+          "line": "Pamuk, bu kadar çok sebzen var. Biraz da başkalarıyla paylaşsan olmaz mı?"
+        }
+      ],
+      "visual_description": "Bahçenin kenarında Tiltu, Pamuk'un yanında durur, sevecen bir ifadeyle konuşur. Pamuk düşünceli bir şekilde bahçesine bakar.",
+      "estimated_duration_sec": 10
+    },
+    {
+      "scene_id": "scene_003",
+      "order": 3,
+      "title": "Kayıp Havuçlar",
+      "source_excerpt": "Bir gün Pamuk sabah uyandığında bahçesinde havuçlarının kaybolduğunu gördü. \"Yavru tavşanlar havuçlarımı yemiştir\" diye düşündü.",
+      "location_id": "pamuk_un_bahcesi",
+      "character_ids": [
+        "pamuk"
+      ],
+      "character_states": {
+        "pamuk": {
+          "emotion": "şaşkın ve kızgın",
+          "action": "boş havuç yataklarına bakıyor",
+          "temporary_clothing": null
+        }
+      },
+      "location_state": {
+        "time_of_day": "sabah",
+        "weather": "güneşli",
+        "temporary_details": [
+          "boş kalmış havuç yatakları",
+          "toprak izleri"
+        ]
+      },
+      "story_event": "Pamuk sabah uyandığında havuçlarının kaybolduğunu fark eder ve yavru tavşanlardan şüphelenir.",
+      "narration": "Bir sabah Pamuk uyandığında bahçesindeki havuçların hepsinin kaybolduğunu gördü. Şaşkınlıkla etrafına bakındı ve içinden geçirdi.",
+      "dialogue": [
+        {
+          "character_id": "pamuk",
+          "line": "Yavru tavşanlar havuçlarımı yemiştir!"
+        }
+      ],
+      "visual_description": "Pamuk bahçedeki boş havuç yataklarının önünde diz çökmüş, şaşkın ve öfkeli bir ifadeyle toprağa bakıyor. Küçük tavşan ayak izleri görünüyor.",
+      "estimated_duration_sec": 10
+    },
+    {
+      "scene_id": "scene_004",
+      "order": 4,
+      "title": "İzler Takip Ediliyor",
+      "source_excerpt": "Pamuk ve Tiltu, yavru tavşanları izler ve onları Çiftçi Amca'nın tarlasında bulur.",
+      "location_id": "orman_yolu",
+      "character_ids": [
+        "pamuk",
+        "tiltu"
+      ],
+      "character_states": {
+        "pamuk": {
+          "emotion": "kararlı",
+          "action": "izleri takip ediyor",
+          "temporary_clothing": null
+        },
+        "tiltu": {
+          "emotion": "meraklı",
+          "action": "Pamuk'un yanında yürüyor",
+          "temporary_clothing": null
+        }
+      },
+      "location_state": {
+        "time_of_day": "gündüz",
+        "weather": "güneşli",
+        "temporary_details": [
+          "toprakta küçük ayak izleri"
+        ]
+      },
+      "story_event": "Pamuk ve Tiltu, kaybolan havuçların izini sürerek orman yolunda ilerler.",
+      "narration": "Pamuk ve Tiltu, kimin havuçları aldığını öğrenmek için küçük ayak izlerini takip ederek orman yolundan ilerlediler.",
+      "dialogue": [],
+      "visual_description": "Ağaçlarla çevrili orman yolunda Pamuk öne eğilmiş izleri inceliyor, Tiltu yanında dikkatle çevreyi gözlüyor.",
+      "estimated_duration_sec": 10
+    },
+    {
+      "scene_id": "scene_005",
+      "order": 5,
+      "title": "Aç ve Üzgün Tavşanlar",
+      "source_excerpt": "Yavru tavşanlar aç ve üzgün görünür.",
+      "location_id": "ciftci_amca_nin_tarlasi",
+      "character_ids": [
+        "pamuk",
+        "tiltu",
+        "yavru_tavsanlar"
+      ],
+      "character_states": {
+        "pamuk": {
+          "emotion": "şaşkın",
+          "action": "tavşanları izliyor",
+          "temporary_clothing": null
+        },
+        "tiltu": {
+          "emotion": "merhametli",
+          "action": "tavşanlara bakıyor",
+          "temporary_clothing": null
+        },
+        "yavru_tavsanlar": {
+          "emotion": "aç ve üzgün",
+          "action": "başları öne eğik oturuyor",
+          "temporary_clothing": null
+        }
+      },
+      "location_state": {
+        "time_of_day": "gündüz",
+        "weather": "güneşli",
+        "temporary_details": [
+          "boş toprak parçaları"
+        ]
+      },
+      "story_event": "Pamuk ve Tiltu, izleri takip ederek Çiftçi Amca'nın tarlasında aç ve üzgün yavru tavşanları bulur.",
+      "narration": "İzler onları Çiftçi Amca'nın tarlasına götürdü. Orada, aç ve üzgün görünen küçük yavru tavşanları buldular.",
+      "dialogue": [],
+      "visual_description": "Çiftçi Amca'nın tarlasında birkaç küçük yavru tavşan, başları öne eğik, zayıf ve üzgün bir halde otururken Pamuk ile Tiltu onlara şefkatle bakar.",
+      "estimated_duration_sec": 12
+    },
+    {
+      "scene_id": "scene_006",
+      "order": 6,
+      "title": "Paylaşma Anı",
+      "source_excerpt": "Pamuk, havuçlarını yavru tavşanlarla paylaşır.",
+      "location_id": "ciftci_amca_nin_tarlasi",
+      "character_ids": [
+        "pamuk",
+        "tiltu",
+        "yavru_tavsanlar"
+      ],
+      "character_states": {
+        "pamuk": {
+          "emotion": "şefkatli ve anlayışlı",
+          "action": "havuçlarını tavşanlara veriyor",
+          "temporary_clothing": null
+        },
+        "tiltu": {
+          "emotion": "mutlu",
+          "action": "gülümseyerek izliyor",
+          "temporary_clothing": null
+        },
+        "yavru_tavsanlar": {
+          "emotion": "mutlu ve minnettar",
+          "action": "havuçları yiyor",
+          "temporary_clothing": null
+        }
+      },
+      "location_state": {
+        "time_of_day": "gündüz",
+        "weather": "güneşli",
+        "temporary_details": []
+      },
+      "story_event": "Pamuk kalbinin sesini dinler ve elindeki havuçları aç yavru tavşanlarla paylaşır.",
+      "narration": "Pamuk, yavru tavşanların ne kadar aç olduğunu görünce kalpten yumuşadı ve elindeki havuçları onlarla paylaştı.",
+      "dialogue": [
+        {
+          "character_id": "pamuk",
+          "line": "Alın, bu havuçlar sizin olsun. Karnınızı doyurun."
+        }
+      ],
+      "visual_description": "Pamuk diz çökmüş, yavru tavşanlara havuçlarını uzatıyor. Tavşanlar sevinçle havuçları alıp yerken Tiltu arkada gülümseyerek izliyor.",
+      "estimated_duration_sec": 14
+    },
+    {
+      "scene_id": "scene_007",
+      "order": 7,
+      "title": "Çiftçi Amca'nın Hediyesi",
+      "source_excerpt": "Çiftçi Amca, Pamuk'a yeni tohumlar verir. Böylece Pamuk paylaşmanın mutluluk verdiğini anlar.",
+      "location_id": "ciftci_amca_nin_tarlasi",
+      "character_ids": [
+        "pamuk",
+        "tiltu",
+        "ciftci_amca",
+        "yavru_tavsanlar"
+      ],
+      "character_states": {
+        "pamuk": {
+          "emotion": "mutlu ve minnettar",
+          "action": "tohumları alıyor",
+          "temporary_clothing": null
+        },
+        "tiltu": {
+          "emotion": "gururlu",
+          "action": "gülümsüyor",
+          "temporary_clothing": null
+        },
+        "ciftci_amca": {
+          "emotion": "memnun",
+          "action": "tohum kesesini Pamuk'a uzatıyor",
+          "temporary_clothing": null
+        },
+        "yavru_tavsanlar": {
+          "emotion": "neşeli",
+          "action": "etrafta oynaşıyor",
+          "temporary_clothing": null
+        }
+      },
+      "location_state": {
+        "time_of_day": "gündüz",
+        "weather": "güneşli",
+        "temporary_details": [
+          "tohum kesesi"
+        ]
+      },
+      "story_event": "Çiftçi Amca, Pamuk'un iyi kalpliliğini görüp ona yeni tohumlar hediye eder; Pamuk paylaşmanın verdiği mutluluğu keşfeder.",
+      "narration": "Bu güzel paylaşımı gören Çiftçi Amca, Pamuk'a teşekkür etti ve ona yeni tohumlar hediye etti. Pamuk, o an paylaşmanın ne kadar mutluluk verdiğini anladı.",
+      "dialogue": [
+        {
+          "character_id": "ciftci_amca",
+          "line": "Ne güzel bir kalbin var Pamuk. İşte sana yeni tohumlar, bahçen daha da güzelleşsin."
+        },
+        {
+          "character_id": "pamuk",
+          "line": "Teşekkür ederim Çiftçi Amca! Şimdi anladım ki paylaşmak gerçekten mutluluk veriyormuş."
+        }
+      ],
+      "visual_description": "Çiftçi Amca, elindeki tohum kesesini gülümseyerek Pamuk'a uzatıyor. Pamuk mutlulukla tohumları alırken Tiltu yanında gururla gülümsüyor, yavru tavşanlar arka planda neşeyle zıplıyor.",
+      "estimated_duration_sec": 15
+    }
+  ]
+}
