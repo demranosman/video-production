@@ -1,0 +1,11 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/venv/Scripts/python.exe",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/../OpenMontage",
+    "C:/Users/fikret/Desktop/OpenMontage"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/../OpenMontage",
+    "C:/Users/fikret/Desktop/OpenMontage"
+  ]
+}

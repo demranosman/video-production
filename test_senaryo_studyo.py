@@ -98,6 +98,31 @@ class PromptTestleri(unittest.TestCase):
             self.assertIn(beklenen, prompt)
 
 
+class GorselPromptTestleri(unittest.TestCase):
+    def test_yerel_sablon_api_olmadan_sahne_ve_negatif_prompt_uretir(self):
+        seri = modeller.Seri(series_id="s", name="Masal", visual_style="3D")
+        karakter = modeller.Karakter(character_id="pamuk", name="Pamuk", visual_identity={"fur": "Beyaz"})
+        mekan = modeller.Mekan(location_id="orman", name="Orman", visual_identity={"light": "Gün doğumu"})
+        sahne = modeller.Sahne(
+            scene_id="scene_001", order=1, title="Yolculuk", location_id="orman",
+            character_ids=["pamuk"], source_excerpt="x", story_event="Pamuk yürür.",
+            visual_description="Ağaçların arasında.", estimated_duration_sec=5,
+        )
+        senaryo = modeller.Senaryo(
+            series_id="s", episode=modeller.Episode(episode_no=1, title="Bölüm"), scenes=[sahne]
+        )
+        sonuc = motor.gorsel_prompt_paketi_sablon(
+            seri, [karakter], [mekan], None, None, [senaryo], "en"
+        )
+        for beklenen in ("VISUAL PROMPT PACK", "CHARACTER REFERENCE", "Pamuk", "Orman", "Main story frame", "Negative prompt"):
+            self.assertIn(beklenen, sonuc)
+
+    def test_gecersiz_gorsel_prompt_dili_hata_verir(self):
+        seri = modeller.Seri(series_id="s", name="Masal")
+        with self.assertRaises(ValueError):
+            motor.gorsel_prompt_paketi_sablon(seri, [], [], None, None, [], "de", "Genel")
+
+
 class LlmJsonTestleri(unittest.TestCase):
     def test_bozuk_yanitta_yeniden_dener(self):
         yanitlar = ["```json\n{bozuk}\n```", '{"scenes": []}']
@@ -182,6 +207,19 @@ class ArayuzTestleri(unittest.TestCase):
             secenekler = at.selectbox(key="yeni_seri_stil_secim").options
             self.assertIn("Sinematik 3D animasyon, yumuşak ışık, canlı renkler", secenekler)
             self.assertIn("Özel tarz (kendin yaz)", secenekler)
+        finally:
+            shutil.rmtree(depo.seri_kok(sid), ignore_errors=True)
+
+    def test_gorsel_prompt_sekmesi_acilir(self):
+        depo.seri_olustur("Görsel Prompt Testi")
+        sid = depo.slugify("Görsel Prompt Testi")
+        try:
+            at = AppTest.from_file(os.path.join(os.path.dirname(__file__), "senaryo_studyo.py"))
+            at.session_state["series_id"] = sid
+            at.run(timeout=20)
+            self.assertFalse(at.exception)
+            self.assertEqual(at.segmented_control(key="gorsel_prompt_dili").value, "tr")
+            self.assertTrue(any(b.label == "Görsel prompt paketini oluştur ve kaydet" for b in at.button))
         finally:
             shutil.rmtree(depo.seri_kok(sid), ignore_errors=True)
 
@@ -353,6 +391,12 @@ class DepoTestleri(unittest.TestCase):
                 depo.mekanlari_yukle(self.series_id),
                 "deneme",
             )
+
+    def test_gorsel_prompt_kaydet_ve_yukle(self):
+        depo.seri_olustur("Test Serisi")
+        depo.gorsel_prompt_kaydet(self.series_id, "tr", "Kalıcı prompt")
+        self.assertEqual(depo.gorsel_prompt_yukle(self.series_id, "tr"), "Kalıcı prompt")
+        self.assertIsNone(depo.gorsel_prompt_yukle(self.series_id, "en"))
 
     def test_yeni_bolum_intro_outroyu_degistirmez(self):
         depo.seri_olustur("Test Serisi")

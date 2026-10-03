@@ -1,4 +1,4 @@
-__pycache__/
+﻿__pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
@@ -7,3 +7,14 @@ venv/
 *.tmp
 .tmp/
 .DS_Store
+
+# Credentials / Service Accounts
+*-key.json
+gen-lang-client*.json
+credentials*.json
+
+# Temporary render files
+temp_*
+**/temp_*
+*.mp4
+*.mp3

@@ -341,3 +341,239 @@ def _sirali_sahneler(sahnaler: list[modeller.Sahne]) -> list[modeller.Sahne]:
         s.model_copy(update={"order": i, "scene_id": f"scene_{i:03d}"})
         for i, s in enumerate(sahnaler, start=1)
     ]
+
+
+# --- LLM: görsel üretim prompt paketi ---
+def _gorsel_prompt_sistem(
+    seri: modeller.Seri,
+    karakterler: list[modeller.Karakter],
+    mekanlar: list[modeller.Mekan],
+    intro: modeller.Intro | None,
+    outro: modeller.Outro | None,
+    senaryolar: list[modeller.Senaryo],
+    dil: str,
+    hedef: str,
+) -> str:
+    """Serinin tüm görsel varlıklarını tek üretim brief'inde toplar."""
+    veri = {
+        "series": seri.model_dump(),
+        "characters": [karakter.model_dump() for karakter in karakterler],
+        "locations": [mekan.model_dump() for mekan in mekanlar],
+        "intro": intro.model_dump() if intro else None,
+        "outro": outro.model_dump() if outro else None,
+        "episodes": [senaryo.model_dump() for senaryo in senaryolar],
+    }
+    dil_adi = {"tr": "Türkçe", "en": "English"}.get(dil)
+    if not dil_adi:
+        raise ValueError("Çıktı dili yalnızca 'tr' veya 'en' olabilir.")
+
+    return f"""
+Sen deneyimli bir yapay zekâ görsel üretim prompt tasarımcısısın. Aşağıdaki seri
+verisinden {hedef} için doğrudan kullanılabilir, tutarlı bir görsel üretim prompt
+paketi yaz.
+
+ÇIKTI DİLİ: {dil_adi}. Kaynak veride başka bir dil kullanılsa bile başlıklar,
+açıklamalar, pozitif promptlar ve negatif promptlar tamamen {dil_adi} olmalı.
+
+ZORUNLU ÇIKTI SIRASI:
+1. `GLOBAL STYLE BIBLE`: seri tarzı, hedef kitle, en-boy oranı, renk/ışık,
+   görsel devamlılık ve tüm karelerde korunacak kurallar.
+2. Her karakter için `CHARACTER REFERENCE — <ad>`: önce nötr tam-boy karakter
+   referansı için tek güçlü pozitif prompt, ardından `Negative prompt:` satırı.
+   Kalıcı fiziksel kimlik, kıyafet ve consistency_rules dışına çıkma.
+3. Her mekân için `LOCATION REFERENCE — <ad>`: karakter olmadan mekân
+   establishing-shot promptu ve negatif promptu.
+4. Intro varsa `INTRO — <seri adı>`; outro varsa `OUTRO — <seri adı>`:
+   süre, seçili karakter/mekân, görsel-hareket-ses tanımları ve sabit metinleri
+   temel alan birer görsel/video ana kare promptu ile negatif promptu.
+5. Her kayıtlı bölümün her sahnesi için `EPISODE <no> / SCENE <no> — <başlık>`:
+   tek karede ana olayı anlatan ayrıntılı pozitif prompt ve `Negative prompt:`.
+   Sahnedeki yalnızca tanımlı karakterleri/mekânı kullan; geçici duygu, eylem,
+   zaman ve hava bilgisini ekle. Anlatı/diyalog metnini ekrana yazı olarak
+   üretme; yalnızca fixed_text veya call_to_action açıkça varsa ekranda okunur
+   metin olmasına izin ver.
+
+KURALLAR:
+- Promptlar yapıştırılabilir düz metin olsun; açıklama, gerekçe, kamera ayarı
+  öğreticisi veya JSON yazma.
+- Her pozitif prompt; konu, kalıcı görünüm, eylem, çevre, kompozisyon, kadraj,
+  ışık, atmosfer, seri görsel tarzı ve en-boy oranını somut biçimde içersin.
+- Aynı karakterin fiziksel özelliğini/kıyafetini her promptta aynen koru;
+  kaynakta olmayan karakter, aksesuar, olay, yazı veya marka uydurma.
+- Negatif promptlarda en az: karakter tasarımının değişmesi, ekstra uzuv/parmak,
+  deforme anatomi, bulanıklık, düşük çözünürlük, filigran, logo, istenmeyen
+  metin/altyazı ve kaynakla çelişen kıyafet/renk yer alsın.
+- Eksik intro/outro veya hiç kayıtlı bölüm yoksa bunu bir satırla belirt; veri
+  uydurma.
+
+SERİ VERİSİ:
+{json.dumps(veri, ensure_ascii=False, indent=2)}
+"""
+
+
+def _prompt_metni(deger: object) -> str:
+    """İç içe katalog verisini promptta okunabilir, kayıpsız metne çevirir."""
+    if isinstance(deger, dict):
+        return ", ".join(f"{anahtar}: {_prompt_metni(deger)}" for anahtar, deger in deger.items())
+    if isinstance(deger, list):
+        return ", ".join(_prompt_metni(oge) for oge in deger)
+    return str(deger).strip()
+
+
+def _deger_metni(deger: object) -> str:
+    """Liste ise virgülle birleştirir, aksi halde düz metin döner."""
+    if isinstance(deger, list):
+        return ", ".join(str(x) for x in deger)
+    return str(deger).strip()
+
+
+def _karakter_gorunum_duzyazi(vid: dict) -> str:
+    """Karakter görünümünü etiketsiz düz yazıya çevirir."""
+    return "; ".join(
+        _deger_metni(vid[anahtar])
+        for anahtar in ("fur_or_skin", "body", "face", "eyes", "distinctive_features")
+        if vid.get(anahtar)
+    )
+
+
+def _mekan_gorunum_duzyazi(vid: dict) -> str:
+    """Mekân görünümünü etiketsiz düz yazıya çevirir."""
+    return "; ".join(
+        _deger_metni(vid[anahtar])
+        for anahtar in ("environment", "ground", "landmarks", "color_palette", "default_lighting", "atmosphere")
+        if vid.get(anahtar)
+    )
+
+
+def _karakter_durum_duzyazi(states: dict, karakter_adlari: dict) -> str:
+    """Karakter durumlarını 'Ad duygu ve eylem' biçiminde düz yazıya çevirir."""
+    parcalar = []
+    for kimlik, durum in states.items():
+        ad = karakter_adlari.get(kimlik, kimlik)
+        emotion = str(durum.get("emotion") or "").strip()
+        action = str(durum.get("action") or "").strip()
+        birlesik = " ve ".join(b for b in (emotion, action) if b)
+        if birlesik:
+            parcalar.append(f"{ad} {birlesik}")
+    return "; ".join(parcalar)
+
+
+def _mekan_durum_duzyazi(state: dict) -> str:
+    """Mekân durumunu düz yazıya çevirir."""
+    parcalar = []
+    tod = str(state.get("time_of_day") or "").strip()
+    weather = str(state.get("weather") or "").strip()
+    if tod:
+        parcalar.append(tod)
+    if weather:
+        parcalar.append(weather)
+    details = state.get("temporary_details") or []
+    if details:
+        parcalar.append(_deger_metni(details))
+    return "; ".join(parcalar)
+
+
+def _sahne_karakter_metni(kimlik: str, karakter_sozluk: dict, en: bool) -> str:
+    """Sahne promptuna karakterin TAM tanımını (tür, görünüm, kıyafet) ekler."""
+    k = karakter_sozluk.get(kimlik)
+    if not k:
+        return kimlik
+    gorunum = _karakter_gorunum_duzyazi(k.visual_identity)
+    if en:
+        return f"{k.name} ({k.type}): {gorunum}; clothing: {k.default_clothing}"
+    return f"{k.name} ({k.type}): {gorunum}; kıyafet: {k.default_clothing}"
+
+
+def _sahne_mekan_metni(location_id: str, mekan_sozluk: dict, en: bool) -> str:
+    """Sahne promptuna mekânın TAM tanımını ekler."""
+    m = mekan_sozluk.get(location_id)
+    if not m:
+        return location_id
+    return f"{m.name}: {_mekan_gorunum_duzyazi(m.visual_identity)}"
+
+
+def gorsel_prompt_paketi_sablon(
+    seri: modeller.Seri,
+    karakterler: list[modeller.Karakter],
+    mekanlar: list[modeller.Mekan],
+    intro: modeller.Intro | None,
+    outro: modeller.Outro | None,
+    senaryolar: list[modeller.Senaryo],
+    dil: str,
+    hedef: str = "Nano Banana Pro",
+) -> str:
+    """API olmadan katalog verisinden üretim aracına yapıştırılabilir paket üretir."""
+    if dil not in {"tr", "en"}:
+        raise ValueError("Çıktı dili yalnızca 'tr' veya 'en' olabilir.")
+    en = dil == "en"
+    baslik = "VISUAL PROMPT PACK" if en else "GÖRSEL PROMPT PAKETİ"
+    global_baslik = "GLOBAL STYLE BIBLE" if en else "GENEL GÖRSEL REHBER"
+    karakter_baslik = "CHARACTER REFERENCE" if en else "KARAKTER REFERANSI"
+    mekan_baslik = "LOCATION REFERENCE" if en else "MEKÂN REFERANSI"
+    sahne_baslik = "SCENE" if en else "SAHNE"
+    negatif = (
+        "Negative prompt: inconsistent character design, changed clothing or colors, extra characters, extra limbs or fingers, deformed anatomy, blurry, low resolution, watermark, logo, unwanted text, subtitles"
+        if en else
+        "Negatif prompt: tutarsız karakter tasarımı, değişmiş kıyafet veya renkler, fazladan karakter, ekstra uzuv veya parmak, deforme anatomi, bulanıklık, düşük çözünürlük, filigran, logo, istenmeyen metin, altyazı"
+    )
+    stil = seri.visual_style or ("cinematic visual style" if en else "sinematik görsel tarz")
+    oran = seri.default_aspect_ratio
+    satirlar = [
+        f"# {baslik} — {seri.name}",
+        f"## {global_baslik}",
+        (
+            f"{hedef}; style: {stil}; target audience: {seri.target_audience}; aspect ratio: {oran}. "
+            "Keep every character's physical identity, clothing and consistency rules identical in all images."
+            if en else
+            f"{hedef}; tarz: {stil}; hedef kitle: {seri.target_audience}; en-boy oranı: {oran}. "
+            "Her görselde karakterlerin fiziksel kimliğini, kıyafetini ve tutarlılık kurallarını aynen koru."
+        ),
+    ]
+    for karakter in karakterler:
+        satirlar.extend([
+            f"\n## {karakter_baslik} — {karakter.name}",
+            (
+                f"Full-body neutral character reference of {karakter.name}, {karakter.type}; permanent appearance: {_karakter_gorunum_duzyazi(karakter.visual_identity)}; clothing: {karakter.default_clothing}; personality: {_prompt_metni(karakter.personality)}; rules: {_prompt_metni(karakter.consistency_rules)}; {stil}; clean character sheet composition, consistent proportions, detailed lighting, {oran}."
+                if en else
+                f"{karakter.name} için tam boy nötr karakter referansı; tür: {karakter.type}; kalıcı görünüm: {_karakter_gorunum_duzyazi(karakter.visual_identity)}; kıyafet: {karakter.default_clothing}; kişilik: {_prompt_metni(karakter.personality)}; kurallar: {_prompt_metni(karakter.consistency_rules)}; {stil}; temiz karakter sayfası kompozisyonu, tutarlı oranlar, ayrıntılı ışık, {oran}."
+            ), negatif,
+        ])
+    for mekan in mekanlar:
+        satirlar.extend([
+            f"\n## {mekan_baslik} — {mekan.name}",
+            (
+                f"Empty establishing shot of {mekan.name}; permanent environment: {_mekan_gorunum_duzyazi(mekan.visual_identity)}; rules: {_prompt_metni(mekan.consistency_rules)}; {stil}; cinematic composition, detailed environment, atmospheric lighting, {oran}."
+                if en else
+                f"{mekan.name} için karaktersiz establishing shot; kalıcı çevre: {_mekan_gorunum_duzyazi(mekan.visual_identity)}; kurallar: {_prompt_metni(mekan.consistency_rules)}; {stil}; sinematik kompozisyon, ayrıntılı çevre, atmosferik ışık, {oran}."
+            ), negatif,
+        ])
+
+    karakter_adlari = {karakter.character_id: karakter.name for karakter in karakterler}
+    mekan_adlari = {mekan.location_id: mekan.name for mekan in mekanlar}
+    karakter_sozluk = {karakter.character_id: karakter for karakter in karakterler}
+    mekan_sozluk = {mekan.location_id: mekan for mekan in mekanlar}
+    for etiket, parca in (("INTRO", intro), ("OUTRO", outro)):
+        if parca:
+            kadro = ", ".join(karakter_adlari.get(kimlik, kimlik) for kimlik in parca.character_ids)
+            mekan = mekan_adlari.get(parca.location_id, parca.location_id)
+            satirlar.extend([
+                f"\n## {etiket} — {seri.name}",
+                (
+                    f"{etiket.title()} keyframe, duration {parca.duration_sec} seconds; characters: {kadro}; location: {mekan}; visual: {parca.visual_description}; action: {parca.action_description}; audio mood: {parca.audio_description}; on-screen text only if specified: {parca.fixed_text}; {stil}; cinematic framing, {oran}."
+                    if en else
+                    f"{etiket.title()} ana karesi, süre: {parca.duration_sec} saniye; karakterler: {kadro}; mekân: {mekan}; görsel: {parca.visual_description}; hareket: {parca.action_description}; ses atmosferi: {parca.audio_description}; yalnızca belirtilmişse ekranda metin: {parca.fixed_text}; {stil}; sinematik kadraj, {oran}."
+                ), negatif,
+            ])
+    for senaryo in senaryolar:
+        for sahne in senaryo.scenes:
+            kadro_tanim = "; ".join(_sahne_karakter_metni(kimlik, karakter_sozluk, en) for kimlik in sahne.character_ids)
+            mekan_tanim = _sahne_mekan_metni(sahne.location_id, mekan_sozluk, en)
+            satirlar.extend([
+                f"\n## EPISODE {senaryo.episode.episode_no} / {sahne_baslik} {sahne.order} — {sahne.title}",
+                (
+                    f"Main story frame: {sahne.story_event}; characters: {kadro_tanim}; location: {mekan_tanim}; character states: {_karakter_durum_duzyazi(sahne.character_states, karakter_adlari)}; location state: {_mekan_durum_duzyazi(sahne.location_state)}; visual direction: {sahne.visual_description}; {stil}; cinematic composition, expressive action, detailed lighting, {oran}. Do not render narration or dialogue as on-screen text."
+                    if en else
+                    f"Ana hikâye karesi: {sahne.story_event}; karakterler: {kadro_tanim}; mekân: {mekan_tanim}; karakter durumları: {_karakter_durum_duzyazi(sahne.character_states, karakter_adlari)}; mekân durumu: {_mekan_durum_duzyazi(sahne.location_state)}; görsel yönlendirme: {sahne.visual_description}; {stil}; sinematik kompozisyon, ifadeli eylem, ayrıntılı ışık, {oran}. Anlatı veya diyaloğu ekranda metin olarak üretme."
+                ), negatif,
+            ])
+    return "\n".join(satirlar)

@@ -75,6 +75,12 @@ def hikaye_yolu(series_id: str, episode_no: int, bolum_slug: str) -> Path:
     return bolum_dizini(series_id, episode_no, bolum_slug) / "hikaye.txt"
 
 
+def gorsel_prompt_yolu(series_id: str, dil: str) -> Path:
+    if dil not in {"tr", "en"}:
+        raise ValueError("Prompt dili yalnızca 'tr' veya 'en' olabilir.")
+    return _yol(series_id, "gorsel_promptlar", f"prompt_{dil}.txt")
+
+
 # --- Medya hedef yolları (bu aşamada yalnızca sonraki üretim için) ---
 def intro_medya_yolu(series_id: str, tur: str) -> Path:
     return intro_dizini(series_id) / tur  # tur: "reference.png" | "intro.mp4" | "audio.wav"
@@ -230,6 +236,21 @@ def hikaye_kaydet(series_id: str, episode_no: int, bolum_slug: str, metin: str) 
         file.write(metin)
     os.replace(temp, path)
     return path
+
+
+def gorsel_prompt_kaydet(series_id: str, dil: str, metin: str) -> Path:
+    path = gorsel_prompt_yolu(series_id, dil)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + ".tmp")
+    with open(temp, "w", encoding="utf-8") as file:
+        file.write(metin)
+    os.replace(temp, path)
+    return path
+
+
+def gorsel_prompt_yukle(series_id: str, dil: str) -> str | None:
+    path = gorsel_prompt_yolu(series_id, dil)
+    return path.read_text(encoding="utf-8") if path.exists() else None
 
 
 def senaryo_yukle(series_id: str, episode_no: int, bolum_slug: str) -> Senaryo:

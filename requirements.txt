@@ -1,4 +1,11 @@
-anthropic==1.7.0
+﻿anthropic==1.7.0
 pydantic==2.13.5
 python-dotenv==1.2.3
 streamlit==1.63.0
+google-cloud-texttospeech
+google-cloud-aiplatform
+google-genai>=1.0.0
+pyyaml>=6.0
+requests>=2.31.0
+pillow>=10.0.0
+runwayml>=5.20.0

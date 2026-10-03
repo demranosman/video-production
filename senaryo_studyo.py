@@ -28,6 +28,7 @@ OZEL_TARZ = "Özel tarz (kendin yaz)"
 st.session_state.setdefault("series_id", None)
 st.session_state.setdefault("cikarilan", None)
 st.session_state.setdefault("senaryo", None)
+st.session_state.setdefault("gorsel_prompt_paketi", None)
 
 
 def _seriyi_sec(yeni_series_id: str) -> None:
@@ -40,6 +41,7 @@ def _seriyi_sec(yeni_series_id: str) -> None:
     st.session_state.series_id = yeni_series_id
     st.session_state.cikarilan = None
     st.session_state.senaryo = None
+    st.session_state.gorsel_prompt_paketi = None
     st.session_state.hikaye_metni = ""
     st.session_state.pop("bolum_no", None)
     st.session_state.pop("bolum_baslik", None)
@@ -54,6 +56,15 @@ def _karakter_katalogu() -> modeller.KarakterKatalogu:
 
 def _mekan_katalogu() -> modeller.MekanKatalogu:
     return depo.mekanlari_yukle(st.session_state.series_id)
+
+
+def _kayitli_senaryolar(series_id: str) -> list[modeller.Senaryo]:
+    """Yalnızca diske kaydedilmiş bölümleri görsel prompt paketine ekler."""
+    return [
+        depo.senaryo_yukle(series_id, bolum["episode_no"], bolum["slug"])
+        for bolum in depo.bolumler(series_id)
+        if bolum["senaryo_var"]
+    ]
 
 
 MEKAN_YOK = "— mekân yok —"
@@ -109,8 +120,8 @@ seri = depo.seri_yukle(series_id)
 st.title(seri.name)
 st.caption(seri.description or "Seri açıklaması yok")
 
-rehber_tab, hikaye_tab, bolumler_tab, karakter_tab, mekan_tab, intro_tab, outro_tab, disa_tab = st.tabs(
-    ["Rehber", "Hikâyeden senaryo", "Bölümler", "Karakterler", "Mekânlar", "Intro", "Outro", "Dışa aktar"]
+rehber_tab, hikaye_tab, bolumler_tab, karakter_tab, mekan_tab, intro_tab, outro_tab, gorsel_tab, disa_tab = st.tabs(
+    ["Rehber", "Hikâyeden senaryo", "Bölümler", "Karakterler", "Mekânlar", "Intro", "Outro", "Görsel promptlar", "Dışa aktar"]
 )
 
 # ============================================================
@@ -136,7 +147,9 @@ with rehber_tab:
    Bölüm `bolumler/<no>/senaryo.json` altına yazılır.
 7. **Intro ve outro** — "Intro" ve "Outro" sekmelerinde seriye özel tanımları
    bağımsız hazırlayıp kaydedin. Bunlar bölüm başına yeniden üretilmez.
-8. **Dışa aktar** — "Dışa aktar" sekmesinden JSON dosyalarını indirin.
+8. **Görsel promptlar** — Kaydedilen sahneler, karakterler, mekânlar, intro ve
+   outro için Türkçe veya İngilizce üretim paketi oluşturun.
+9. **Dışa aktar** — "Dışa aktar" sekmesinden JSON dosyalarını indirin.
 
 > **Not:** Karakterler ve mekânlar seri seviyesinde saklanır; yeni bir hikâyede aynı
 > isim bulunursa mevcut kayıt yeniden kullanılır ve üzerine yazılmaz.
@@ -492,6 +505,57 @@ with outro_tab:
         ":material/info: Durum elle işaretlenir; hiçbir durumda düzenleme kısıtlanmaz. "
         "Görsel/video/ses üretimi sonraki aşamada eklenecek."
     )
+
+# ============================================================
+# Görsel üretim promptları
+# ============================================================
+with gorsel_tab:
+    st.subheader("Görsel üretim prompt paketi")
+    st.caption(
+        "Karakter, mekân, intro, outro ve kaydedilmiş bölüm sahnelerini tek pakette toplar. "
+        "Herhangi bir görsel üretim aracına yapıştırılabilir ve yerelde saklanır."
+    )
+    dil = st.segmented_control(
+        "Çıktı dili", {"tr": "Türkçe", "en": "English"},
+        default="tr", key="gorsel_prompt_dili",
+    )
+    paket = st.session_state.gorsel_prompt_paketi
+    if not paket or paket["dil"] != dil:
+        icerik = depo.gorsel_prompt_yukle(series_id, dil)
+        paket = {"dil": dil, "icerik": icerik} if icerik else None
+        st.session_state.gorsel_prompt_paketi = paket
+
+    if st.button("Görsel prompt paketini oluştur ve kaydet", type="primary", icon=":material/auto_awesome:"):
+        icerik = motor.gorsel_prompt_paketi_sablon(
+            seri,
+            _karakter_katalogu().characters,
+            _mekan_katalogu().locations,
+            depo.intro_yukle(series_id),
+            depo.outro_yukle(series_id),
+            _kayitli_senaryolar(series_id),
+            dil,
+            "Genel görsel üretim modeli",
+        )
+        depo.gorsel_prompt_kaydet(series_id, dil, icerik)
+        paket = {"dil": dil, "icerik": icerik}
+        st.session_state.gorsel_prompt_paketi = paket
+        st.success("Prompt paketi yerelde kaydedildi.")
+
+    if paket:
+        dil_etiketi = "Türkçe" if paket["dil"] == "tr" else "English"
+        st.text_area(
+            f"{dil_etiketi} görsel üretim prompt paketi",
+            paket["icerik"],
+            height=520,
+            key="gorsel_prompt_ciktisi",
+        )
+        st.download_button(
+            "Prompt paketini indir",
+            paket["icerik"],
+            file_name=f"{seri.series_id}_gorsel_prompt_{paket['dil']}.txt",
+            mime="text/plain",
+            icon=":material/download:",
+        )
 
 # ============================================================
 # Dışa aktar

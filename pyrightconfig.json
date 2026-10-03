@@ -1,0 +1,9 @@
+{
+  "include": [
+    "."
+  ],
+  "extraPaths": [
+    "../OpenMontage",
+    "C:/Users/fikret/Desktop/OpenMontage"
+  ]
+}
