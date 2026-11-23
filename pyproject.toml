@@ -1,0 +1,28 @@
+# Yalnızca araç yapılandırması. Çalışma zamanı bağımlılıkları requirements.txt'te
+# (requirements-dev.txt yalnızca kalite kapısı araçlarını ekler).
+[tool.ruff]
+line-length = 120
+exclude = ["venv", ".venv", "seriler"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP", "RET"]
+
+[tool.ruff.lint.per-file-ignores]
+# sys.path'e proje kökünü ekledikten sonra import etmek zorunlu.
+"test_video_router.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+files = [
+    "app.py",
+    "formatlar.py",
+    "medya_motoru.py",
+    "senaryo_modelleri.py",
+    "senaryo_motoru.py",
+    "seri_deposu.py",
+    "uretim_isci.py",
+    "video_motoru_openmontage.py",
+    "video_provider_router.py",
+    "video_uretim.py",
+]

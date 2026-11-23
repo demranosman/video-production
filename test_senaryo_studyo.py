@@ -3,7 +3,6 @@ import json
 import os
 import shutil
 import unittest
-from pathlib import Path
 
 from pydantic import ValidationError
 from streamlit.testing.v1 import AppTest
@@ -128,7 +127,7 @@ class LlmJsonTestleri(unittest.TestCase):
         yanitlar = ["```json\n{bozuk}\n```", '{"scenes": []}']
         cagrilar = []
 
-        def sahte_llm_metin(system, user):
+        def sahte_llm_metin(system, user, json_modu=False):
             cagrilar.append(user)
             return yanitlar[len(cagrilar) - 1]
 
@@ -146,7 +145,7 @@ class LlmJsonTestleri(unittest.TestCase):
 
     def test_hep_bozuksa_hata_verir(self):
         orijinal = motor._llm_metin
-        motor._llm_metin = lambda system, user: "JSON değil"
+        motor._llm_metin = lambda system, user, json_modu=False: "JSON değil"
         try:
             with self.assertRaises(ValueError):
                 motor._llm_json("sistem", "kullanici", deneme=3)
@@ -168,12 +167,12 @@ class SahneSiralamaTestleri(unittest.TestCase):
 
 class RevizyonTestleri(unittest.TestCase):
     def _intro(self, **degisiklik) -> modeller.Intro:
-        temel = {
+        temel: dict[str, object] = {
             "series_id": "s", "duration_sec": 5,
             "character_ids": ["pamuk"], "location_id": "orman",
         }
         temel.update(degisiklik)
-        return modeller.Intro(**temel)
+        return modeller.Intro.model_validate(temel)
 
     def test_ilk_kayit_revizyon_1(self):
         self.assertEqual(modeller.revizyon_artir(None, self._intro()), 1)

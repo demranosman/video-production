@@ -20,23 +20,49 @@ DEFAULT_POLICY_PATH = Path(__file__).with_name("video_provider_policy.json")
 
 
 def _load_policy(path: str | os.PathLike[str] | None = None) -> dict[str, Any]:
-    policy_path = Path(path or os.environ.get("VIDEO_PROVIDER_POLICY", DEFAULT_POLICY_PATH))
+    policy_path = Path(
+        path or os.environ.get("VIDEO_PROVIDER_POLICY") or DEFAULT_POLICY_PATH
+    )
     with policy_path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
+def _openmontage_yolu() -> Path:
+    """OpenMontage dizinini bulur: env → D:/OpenMontage → masaüstü → kardeş dizin."""
+    env_yolu = os.environ.get("OPENMONTAGE_PATH", "").strip()
+    if env_yolu:
+        # Açıkça verilen yol yanlışsa sessizce başka dizine düşme.
+        if Path(env_yolu).is_dir():
+            return Path(env_yolu)
+        raise RuntimeError(f"OPENMONTAGE_PATH geçerli bir dizin değil: {env_yolu}")
+
+    try:
+        masaustu = str(Path.home() / "Desktop" / "OpenMontage")
+    except RuntimeError:
+        masaustu = ""
+    adaylar = [
+        r"D:\OpenMontage",
+        masaustu,
+        str(Path(__file__).resolve().parent.parent / "OpenMontage"),
+    ]
+    for aday in adaylar:
+        if Path(aday).is_dir():
+            return Path(aday)
+    raise RuntimeError(
+        "OpenMontage dizini bulunamadı. OPENMONTAGE_PATH ortam değişkenini ayarlayın. "
+        f"Denenen yollar: {', '.join(adaylar)}"
+    )
+
+
 def _openmontage_selector():
-    openmontage_path = os.environ.get("OPENMONTAGE_PATH", r"C:\Users\fikret\Desktop\OpenMontage")
-    if not Path(openmontage_path).is_dir():
-        raise RuntimeError(
-            f"OpenMontage dizini bulunamadı: {openmontage_path}. "
-            "OPENMONTAGE_PATH ortam değişkenini doğru klasöre ayarlayın."
-        )
+    openmontage_path = str(_openmontage_yolu())
     if openmontage_path not in os.sys.path:
         os.sys.path.insert(0, openmontage_path)
 
     try:
-        from tools.video.video_selector import VideoSelector  # type: ignore[import-not-found]  # pyright: ignore[reportMissingImports]
+        from tools.video.video_selector import (  # type: ignore[import-not-found]
+            VideoSelector,  # pyright: ignore[reportMissingImports]
+        )
     except ImportError as exc:
         raise RuntimeError(
             "OpenMontage video_selector yüklenemedi. OPENMONTAGE_PATH ve Python bağımlılıklarını kontrol edin."
@@ -83,9 +109,19 @@ def _provider_attempt(
     duration: int,
     generate_audio: bool,
     negative_prompt: str = "",
+    aspect_ratio: str = "16:9",
 ) -> Any:
     if not Path(image_path).is_file():
         raise FileNotFoundError(f"Sahne görseli bulunamadı: {image_path}")
+
+    # Sağlayıcılar farklı süre biçimleri bekler: Runway int, Veo "8s".
+    if provider == "veo":
+        saniye = 8 if duration >= 7 else 6 if duration >= 5 else 4
+        sure_degeri: Any = f"{saniye}s"
+    elif provider == "runway":
+        sure_degeri = max(2, min(30, int(duration)))
+    else:
+        sure_degeri = int(duration)
 
     # Selector yalnızca ortak video sözleşmesini alır. Provider'a özgü model
     # seçimini policy'de zorlamıyoruz; böylece provider kendi geçerli varsayılanını kullanır.
@@ -95,8 +131,10 @@ def _provider_attempt(
         "preferred_provider_gap": 1.0,
         "allowed_providers": [provider],
         "operation": "image_to_video",
-        "aspect_ratio": "16:9",
-        "duration": str(duration),
+        "aspect_ratio": aspect_ratio,
+        # OpenMontage sağlayıcıları farklı anahtar adları kullanır; ikisini de ver.
+        "ratio": aspect_ratio,
+        "duration": sure_degeri,
         "reference_image_path": str(Path(image_path).resolve()),
         "output_path": str(Path(output_path).resolve()),
     }
@@ -137,6 +175,7 @@ def generate_video_via_openmontage(
     generate_audio: bool = True,
     negative_prompt: str = "",
     policy_path: str | os.PathLike[str] | None = None,
+    aspect_ratio: str = "16:9",
 ) -> dict[str, Any]:
     """Generate video from an existing scene image using OpenMontage.
 
@@ -144,6 +183,8 @@ def generate_video_via_openmontage(
     RuntimeError only after every configured provider fails.
     """
     policy = _load_policy(policy_path)
+    if not aspect_ratio:
+        aspect_ratio = str(policy.get("aspect_ratio") or "16:9")
     providers = list(policy.get("preferred_order") or [])
     if not providers:
         raise RuntimeError("video_provider_policy.json içinde preferred_order boş.")
@@ -165,6 +206,7 @@ def generate_video_via_openmontage(
                     duration=duration,
                     generate_audio=generate_audio,
                     negative_prompt=negative_prompt,
+                    aspect_ratio=aspect_ratio,
                 )
                 if getattr(result, "success", False):
                     data = dict(getattr(result, "data", {}) or {})
@@ -218,7 +260,7 @@ def generate_video_via_openmontage(
                     break
                 time.sleep(2)
 
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - sağlayıcı hataları bilinmeyen tiplerde gelir
                 error = str(exc)
                 attempts.append({
                     "provider": provider,

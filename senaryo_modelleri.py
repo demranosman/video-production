@@ -23,10 +23,13 @@ class Seri(BaseModel):
     language: str = "tr"
     visual_style: str = ""
     default_aspect_ratio: str = "16:9"
+    genre: str = "genel"
+    format: Literal["kisa", "orta", "uzun"] = "orta"
+    target_duration_sec: int = Field(default=180, ge=1)
     created_at: str = ""
 
     @model_validator(mode="after")
-    def _kimlik_bos_olmasin(self) -> "Seri":
+    def _kimlik_bos_olmasin(self) -> Seri:
         if not self.name.strip():
             raise ValueError("Seri adı boş olamaz.")
         if not self.series_id.strip():
@@ -46,10 +49,12 @@ class Karakter(BaseModel):
     personality: list[str] = Field(default_factory=list)
     speech_style: str = ""
     voice_description: str = ""
+    # ElevenLabs voice_id (opsiyonel). Boşsa dil/cinsiyet varsayılanı kullanılır.
+    voice_id: str = ""
     consistency_rules: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _gerekli_alanlar(self) -> "Karakter":
+    def _gerekli_alanlar(self) -> Karakter:
         if not self.character_id.strip():
             raise ValueError("character_id boş olamaz.")
         if not self.name.strip():
@@ -73,7 +78,7 @@ class Mekan(BaseModel):
     consistency_rules: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _gerekli_alanlar(self) -> "Mekan":
+    def _gerekli_alanlar(self) -> Mekan:
         if not self.location_id.strip():
             raise ValueError("location_id boş olamaz.")
         if not self.name.strip():
@@ -108,10 +113,17 @@ class Sahne(BaseModel):
     narration: str = ""
     dialogue: list[dict[str, Any]] = Field(default_factory=list)
     visual_description: str = ""
+    # Üretim için İngilizce görsel komut (opsiyonel); boşsa visual_description kullanılır.
+    image_prompt: str = ""
+    # FFmpeg Ken Burns yönü: "zoom in", "zoom out", "pan left", "pan right" vb.
+    motion: str = ""
+    # Kullanıcı fotoğraf/video eklediyse Gemini görseli yerine kolaj üretilir.
+    # [{"path": "medya/dosya.jpg", "type": "image"}]
+    media: list[dict[str, Any]] = Field(default_factory=list)
     estimated_duration_sec: int = Field(ge=1)
 
     @model_validator(mode="after")
-    def _gerekli_alanlar(self) -> "Sahne":
+    def _gerekli_alanlar(self) -> Sahne:
         if not self.scene_id.strip():
             raise ValueError("scene_id boş olamaz.")
         if not self.source_excerpt.strip():
@@ -130,7 +142,7 @@ class Senaryo(BaseModel):
     scenes: list[Sahne] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _sahne_sirasi_tekrarsiz(self) -> "Senaryo":
+    def _sahne_sirasi_tekrarsiz(self) -> Senaryo:
         if not self.scenes:
             raise ValueError("Senaryo en az bir sahne içermelidir.")
         orders = [s.order for s in self.scenes]
@@ -183,7 +195,7 @@ class Outro(BaseModel):
 _REVIZYON_DISI = {"revision", "status"}
 
 
-def revizyon_artir(mevcut: BaseModel | None, yeni: BaseModel) -> int:
+def revizyon_artir(mevcut: Intro | Outro | None, yeni: Intro | Outro) -> int:
     """Yeni kaydın revizyon numarasını döner; içerik değişmediyse mevcut kalır."""
     if mevcut is None:
         return 1

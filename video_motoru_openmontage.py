@@ -1,12 +1,12 @@
-import os
-import subprocess
-import json
-import shutil
 import base64
-import time
-import urllib.request
-import requests
 import io
+import json
+import os
+import shutil
+import subprocess  # nosec B404 - ffmpeg/ffprobe çağrıları sabit komutlardır
+from typing import Any
+
+import requests
 from PIL import Image
 
 # -------------------------------------------------------------
@@ -42,6 +42,14 @@ STYLE_PREFIX = (
 )
 
 
+def _binary(name: str) -> str:
+    """PATH'teki harici aracın tam yolunu döner (kısmi yol uyarısını önler)."""
+    path = shutil.which(name)
+    if not path:
+        raise RuntimeError(f"{name} bulunamadı. FFmpeg kurulu ve PATH'te olmalı.")
+    return path
+
+
 def _image_to_b64(image_path: str) -> str:
     """Görüntü dosyasını saf base64 dizesine çevirir (data URI prefix'siz)."""
     with open(image_path, "rb") as f:
@@ -66,10 +74,10 @@ def _extract_gemini_image(result: dict):
 def _gemini_generate_image(prompt: str, reference_paths: list, output_path: str):
     """Gemini 3 Pro Image ile görsel üretir (referanslı = image-to-image)."""
     headers = {"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"}
-    input_parts = [{"type": "text", "text": prompt}]
+    input_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
     for ref_path in reference_paths:
         input_parts.append({"type": "image", "mime_type": "image/png", "data": _image_to_b64(ref_path)})
-    body = {
+    body: dict[str, Any] = {
         "model": GEMINI_IMAGE_MODEL,
         "input": input_parts,
         "response_format": {
@@ -236,16 +244,16 @@ def _resolve_music_path(scene: dict, bolum_klasoru: str, seri_klasoru: str) -> s
 
 def _add_series_music(video_path: str, music_path: str, output_path: str, volume: float = 0.20):
     """Seri müziğini mevcut Veo sesinin üzerine arka plan olarak ekler."""
-    duration = float(subprocess.check_output([
-        "ffprobe", "-v", "error", "-show_entries", "format=duration",
+    duration = float(subprocess.check_output([  # nosec B603 - sabit ffprobe komutu
+        _binary("ffprobe"), "-v", "error", "-show_entries", "format=duration",
         "-of", "default=noprint_wrappers=1:nokey=1", video_path
     ], text=True).strip())
     filter_complex = (
         f"[1:a]volume={volume},atrim=duration={duration},asetpts=N/SR/TB[music];"
         "[0:a][music]amix=inputs=2:duration=first:dropout_transition=2[aout]"
     )
-    subprocess.run([
-        "ffmpeg", "-y",
+    subprocess.run([  # nosec B603 - sabit ffmpeg komutu
+        _binary("ffmpeg"), "-y",
         "-i", video_path,
         "-stream_loop", "-1", "-i", music_path,
         "-filter_complex", filter_complex,
@@ -401,8 +409,8 @@ def _render_static_motion(image_path: str, output_path: str, duration: int, zoom
         "format=yuv420p"
     )
 
-    subprocess.run([
-        "ffmpeg", "-y", "-loop", "1", "-i", image_path,
+    subprocess.run([  # nosec B603 - sabit ffmpeg komutu
+        _binary("ffmpeg"), "-y", "-loop", "1", "-i", image_path,
         "-t", str(duration), "-vf", vf,
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", output_path
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -420,12 +428,12 @@ def merge_media(video_path: str, audio_path: str, output_path: str):
     if not os.path.exists(video_path):
         raise FileNotFoundError(video_path)
     shutil.copyfile(video_path, output_path)
-    print(f"[+] Native audio zaten videoda: {output_path}")
+    print(f"[+] Native audio zaten videoda: {output_path} (harici ses {audio_path} yok sayıldı)")
 
 
 def generate_image_and_convert_to_video(
     prompt: str, output_path: str, sahne_id_name: str,
-    reference_paths: list = None, duration: int = 5, scene: dict = None
+    reference_paths: list | None = None, duration: int = 5, scene: dict | None = None
 ):
     """Gemini sahne görseli + FFmpeg kontrollü hafif hareket."""
     scene = scene or {}
@@ -448,7 +456,7 @@ def generate_image_and_convert_to_video(
 
 def generate_video(
     prompt: str, output_path: str, sahne_id_name: str = "Video",
-    reference_paths: list = None, duration: int = 8, scene: dict = None
+    reference_paths: list | None = None, duration: int = 8, scene: dict | None = None
 ):
     """Gemini/Nano Banana Pro görseli + OpenMontage video provider router.
 
@@ -474,7 +482,7 @@ def generate_video(
 
     policy_path = os.environ.get("VIDEO_PROVIDER_POLICY", "") or None
     print(f"[2/2] {sahne_id_name}: OpenMontage video router ({duration}s)")
-    print(f"      Provider sırası: policy dosyasından okunuyor")
+    print("      Provider sırası: policy dosyasından okunuyor")
     print(f"      Native audio: {'yes' if generate_audio else 'no'}")
 
     try:
@@ -495,7 +503,6 @@ def generate_video(
     )
 
     print(f"[+] Video üretildi: provider={result['provider']}, output={result['output_path']}")
-    return
 
 
 def concat_videos(video_list, output_path):
@@ -507,21 +514,21 @@ def concat_videos(video_list, output_path):
             f.write(f"file '{safe_path}'\n")
             
     command = [
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+        _binary("ffmpeg"), "-y", "-f", "concat", "-safe", "0",
         "-i", list_file, "-c", "copy", output_path
     ]
     try:
-        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # nosec B603 - sabit ffmpeg komutu
         print(f"[+] Tüm sahneler başarıyla birleştirildi: {output_path}")
     except subprocess.CalledProcessError:
         # Stream copy birleştiremezse re-encode concat uygula
         fallback_cmd = [
-            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+            _binary("ffmpeg"), "-y", "-f", "concat", "-safe", "0",
             "-i", list_file, "-c:v", "libx264", "-pix_fmt", "yuv420p",
             "-c:a", "aac", output_path
         ]
         try:
-            subprocess.run(fallback_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(fallback_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # nosec B603 - sabit ffmpeg komutu
             print(f"[+] Tüm sahneler yeniden kodlanarak birleştirildi: {output_path}")
         except subprocess.CalledProcessError as e:
             print(f"[-] FFmpeg concat hatası: {e}")
@@ -530,7 +537,7 @@ def concat_videos(video_list, output_path):
             os.remove(list_file)
 
 
-def run_pipeline(senaryo_path: str = None):
+def run_pipeline(senaryo_path: str | None = None):
     """Senaryoyu okur ve tüm video üretim pipeline'ını çalıştırır."""
     if not senaryo_path:
         senaryo_path = os.path.join(
@@ -550,18 +557,18 @@ def run_pipeline(senaryo_path: str = None):
     karakterler = {}
     karakterler_path = os.path.join(seri_klasoru, "karakterler.json")
     if os.path.exists(karakterler_path):
-        with open(karakterler_path, "r", encoding="utf-8") as f:
+        with open(karakterler_path, encoding="utf-8") as f:
             for k in json.load(f).get("characters", []):
                 karakterler[k["character_id"]] = k
 
     mekanlar = {}
     mekanlar_path = os.path.join(seri_klasoru, "mekanlar.json")
     if os.path.exists(mekanlar_path):
-        with open(mekanlar_path, "r", encoding="utf-8") as f:
+        with open(mekanlar_path, encoding="utf-8") as f:
             for m in json.load(f).get("locations", []):
                 mekanlar[m["location_id"]] = m
 
-    with open(senaryo_path, "r", encoding="utf-8") as f:
+    with open(senaryo_path, encoding="utf-8") as f:
         scenes = json.load(f).get("scenes", [])
     
     intro_path = os.path.join(seri_klasoru, "intro", "intro.json")
@@ -572,7 +579,7 @@ def run_pipeline(senaryo_path: str = None):
         active_ids.update(scene.get("character_ids", []))
     for p in (intro_path, outro_path):
         if os.path.exists(p):
-            with open(p, "r", encoding="utf-8") as f:
+            with open(p, encoding="utf-8") as f:
                 active_ids.update(json.load(f).get("character_ids", []))
     ref_paths = ensure_character_references(karakterler, active_ids, seri_klasoru)
 
@@ -656,7 +663,7 @@ def run_pipeline(senaryo_path: str = None):
     final_scenes = []
     
     if os.path.exists(intro_path):
-        with open(intro_path, "r", encoding="utf-8") as f:
+        with open(intro_path, encoding="utf-8") as f:
             if vid := process_scene_data(json.load(f), "intro"):
                 final_scenes.append(vid)
             
@@ -665,7 +672,7 @@ def run_pipeline(senaryo_path: str = None):
             final_scenes.append(vid)
         
     if os.path.exists(outro_path):
-        with open(outro_path, "r", encoding="utf-8") as f:
+        with open(outro_path, encoding="utf-8") as f:
             if vid := process_scene_data(json.load(f), "outro"):
                 final_scenes.append(vid)
 

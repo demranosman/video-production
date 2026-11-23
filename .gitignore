@@ -1,6 +1,11 @@
 ﻿__pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.jscpd-report/
+test-raporu.json
 .venv/
 venv/
 .env
@@ -18,3 +23,14 @@ temp_*
 **/temp_*
 *.mp4
 *.mp3
+
+# Runtime production artifacts
+seriler/**/uretim_durum.json
+seriler/**/final.srt
+seriler/**/final_video_ham.mp4
+seriler/**/_font.ttf
+seriler/**/_baslik.txt
+seriler/**/_alt.txt
+seriler/**/*_parcalar/
+seriler/**/*_segmentler/
+seriler/**/*_medya_segmentler/

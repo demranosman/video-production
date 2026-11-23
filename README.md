@@ -1,201 +1,147 @@
-﻿# Hikâyeden Senaryo ve Video Üretim Stüdyosu
+# Senaryo & Video Stüdyosu
 
-Bir hikâye metnini alıp karakter ve mekân kataloğunu çıkaran, seri boyunca tutarlılığı sağlayan, sahneleme yapıp senaryo üreten ve **OpenMontage** entegrasyonu ile otomatik sahne görseli, seslendirme ve video montajı gerçekleştiren uçtan uca üretim stüdyosu.
+Fikir veya hikâyeden senaryo üretip **kısa (Shorts/Reels), orta ve uzun metraj** video üreten tek Python/Streamlit uygulaması.
 
----
+Ana hat: **fikir/hikâye → Mistral senaryo → Gemini görsel → Runway/Veo 3.1 hareket + native ses → FFmpeg master**
 
-## 🎯 Amaç
+## Ne yapar
 
-1. **Görsel & Karakter Tutarlılığı:** Bir serinin tüm bölümlerinde karakterlerin ve mekânların görsel kimliğini (`visual_identity`, `default_clothing`, `consistency_rules`) korumak.
-2. **Akıllı Senaryo Bölümleme:** Hikâyenin kaynak metnini bozmadan sahneler, anlatıcı/diyalog metinleri ve görsel/video promptları üretmek.
-3. **OpenMontage ile Çoklu Video Sağlayıcı & Akıllı Fallback:**
-   - Runway Gen-3 / Gen-4
-   - Google Veo 2 / Veo 3
-   - Gemini Omni
-   - OpenAI Sora 2
-   - Kling, Minimax, Seedance ve diğer OpenMontage sağlayıcıları
-   - Bir sağlayıcıda kota tükenmesi (`quota_exhausted`), yetkilendirme veya geçici hata meydana geldiğinde sahne görselini yeniden üretmeye gerek kalmadan bir sonraki sağlayıcıya otomatik geçiş (graceful fallback).
-4. **Uçtan Uca Medya Hattı (Pipeline):**
-   - **Görsel:** Gemini / Imagen referans destekli sahne görseli üretimi (`_sahne.png`).
-   - **Video:** OpenMontage `VideoSelector` aracılığıyla image-to-video üretimi.
-   - **Ses:** Google Cloud Text-to-Speech (TTS) ile karakter ve anlatıcı seslendirmesi.
-   - **Montaj:** `ffmpeg` ile video ve sesin senkron birleştirilmesi ve bölümlerin nihai film haline getirilmesi.
+- Fikri hikâyeye genişletir, hikâyeden karakter/mekân çıkarır, sahnelere böler (Mistral; istenirse Claude).
+- Format ve türe göre sahne sayısı/süresi hedefli senaryo üretir.
+- Her karakter için bir kez referans portre üretir (Gemini); sahneleri bu referanslarla üretir.
+- Sahneleri Runway/Veo 3.1 ile hareketli videoya çevirir; native sesi korur.
+- Ekonomik modda FFmpeg Ken Burns veya fal.ai + ElevenLabs kullanır.
+- Intro/outro kartı, altyazı yakma, gerçek medya kolajı ve FFmpeg birleştirme yapar.
+- Üretim arka planda çalışır; Streamlit kilitlenmez, kaldığı yerden devam eder.
 
----
+## Hızlı başlangıç
 
-## 📁 Proje Mimarisi ve Dosya Düzeni
+```bash
+python -m venv venv
+venv\Scripts\activate          # Windows
+pip install -r requirements.txt
+
+copy .env.example .env         # anahtarları doldurun
+streamlit run app.py
+```
+
+FFmpeg ve ffprobe PATH'te olmalı. OpenMontage `D:\OpenMontage` altında beklenir; farklıysa `.env` içinde `OPENMONTAGE_PATH` ayarlayın.
+
+## Tek akış
+
+1. **Proje oluştur** — ad, tür, format, görsel tarz, hedef kitle.
+2. **Senaryo** — “Fikir” veya “Hazır hikâye”; *Senaryoyu oluştur*.
+3. **Düzenle** — hikâye, logline, sahne anlatımı, görsel komut, kamera hareketi, süre, gerçek medya.
+4. **Üret** — video modu, intro/outro, altyazı; *Videoyu üret*.
+5. **Video** — önizle, MP4 indir, klipleri yeniden birleştir.
+
+## Formatlar
+
+| Format | Sahne | Hedef süre | En-boy | Kullanım |
+|---|---|---|---|---|
+| Kısa | 4-8 | 30-90 sn | 9:16 | Shorts, Reels, TikTok |
+| Orta | 8-15 | 2-5 dk | 16:9 | YouTube, tanıtım |
+| Uzun | 15-40 | 6-20 dk | 16:9 | Belgesel, eğitim, uzun hikâye |
+
+## Üretim modları
+
+| Mod | Görsel | Hareket | Ses | Not |
+|---|---|---|---|---|
+| **OpenMontage + native (varsayılan)** | Gemini | Veo 3.1 → Runway | Veo/Runway native audio | Sahne 4-8 sn; kısa video |
+| OpenMontage + ElevenLabs | Gemini | Veo 3.1 → Runway (sessiz) | ElevenLabs anlatım | Uzun metraj, kontrollü ses |
+| Resim | Gemini | FFmpeg Ken Burns | ElevenLabs (opsiyonel) | En ekonomik |
+| Hareketli | Gemini | fal.ai Kling | ElevenLabs | fal.ai anahtarı gerekir |
+
+OpenMontage sağlayıcı sırası `video_provider_policy.json` içindedir (`veo → runway → gemini_omni → openai`); Veo erişimi yoksa Runway otomatik devreye girer. Native ses modunda sahneler `NATIVE_MAX_SN` (varsayılan 8 sn) ile sınırlanır; uzun videolarda ElevenLabs modu önerilir.
+
+## Gerekli anahtarlar
+
+- `MISTRAL_API_KEY` — senaryo (varsayılan). Alternatif: `ANTHROPIC_API_KEY`, `LLM_PROVIDER=claude`.
+- `GEMINI_API_KEY` — görseller ve (varsa) Veo.
+- `RUNWAY_API_KEY` veya `RUNWAYML_API_SECRET` — Runway video sağlayıcısı.
+- `ELEVENLABS_API_KEY` — yalnızca resim/hareketli modda seslendirme.
+- `FAL_API_KEY` — yalnızca hareketli mod.
+- `OPENMONTAGE_PATH` — varsayılan `D:\OpenMontage`.
+
+## Maliyet (video başına)
+
+Liste fiyatları (2026-11 itibarıyla, sağlayıcı değiştirebilir — kendi hesabınızdan doğrulayın):
+
+| Kalem | Birim | Kaynak |
+|---|---|---|
+| Gemini 3 Pro Image (sahne görseli + karakter referansı) | ~$0.134 / görsel (2K), ~$0.24 (4K) | ai.google.dev/gemini-api/docs/pricing |
+| Veo 3.1 / Runway i2v | ~$0.05–0.40 / saniye (modele göre) | dev.runway.com/pricing · ai.google.dev/gemini-api/docs/pricing |
+| ElevenLabs (turbo v2.5) | ~$0.04 / 1.000 karakter | elevenlabs.io/pricing/api |
+| Mistral / Claude (senaryo) | token başına; video maliyeti yanında ihmal edilebilir | — |
+
+Kaba formül: `görsel_sayısı × $0.134  +  klip_saniyesi × sn_fiyatı  +  (karakter/1000) × $0.04`
+
+Çağrı sayısını kod hesaplıyor: `medya_motoru.tahmini_cagri_sayilari(senaryo, video_modu, seslendirme)`.
+Örnek — 6 sahne, 8 sn klip (native ses), 600 karakter anlatım:
+
+- **OpenMontage (Veo/Runway)** — 6 × $0.134 = $0.80 görsel + 48 sn klip. Klip $0.05/sn ise **~$3.2**, $0.40/sn ise **~$19.9**. En pahalı mod.
+- **Resim modu (FFmpeg Ken Burns) + ElevenLabs** — $0.80 + $0.024 ≈ **$0.83**. Uzun metrajda tek pratik seçenek.
+- **Hareketli (fal.ai Kling)** — $0.80 + sahne başına 5 sn'lik klip sayısı kadar fal ücreti.
+
+Uzun metraj = klip saniyesi = maliyet. 20 dk'lık video native modda 1.200 sn klip ister; bu yüzden uzun formatta
+`openmontage` yerine `resim` + ElevenLabs önerilir.
+
+> Risk: Veo 3.1 **preview** modelleri Gemini API'de 22 Ekim 2026'da kapatıldı; bu proje Veo'yu Runway üzerinden
+> (`RUNWAY_VIDEO_MODEL=veo3.1_fast`) çağırıyor. Model adı Runway tarafında değişirse `video_provider_policy.json`
+> sırası `runway`'e düşer — üretim öncesi bir test klibiyle doğrulayın.
+
+## Proje yapısı
 
 ```text
-senaryo-video-uretim/
-├── senaryo_modelleri.py        # Pydantic veri modelleri ve doğrulama
-├── senaryo_motoru.py           # Claude / LLM çağrıları, varlık eşleme ve prompt paketleri
-├── senaryo_studyo.py           # Streamlit web stüdyo arayüzü
-├── seri_deposu.py              # Dizin yönetimi, seriler ve katalog saklama
-├── test_senaryo_studyo.py      # Senaryo ve stüdyo testleri
-│
-├── video_motoru_openmontage.py # Ana video üretim motoru (Görsel + TTS + Video + Montaj)
-├── video_motoru.py             # Alternatif / doğrudan video motoru
-├── video_provider_router.py    # OpenMontage video_selector adaptörü ve fallback yöneticisi
-├── video_provider_policy.json  # Video sağlayıcı öncelik ve fallback politikası
-├── video_uretim.py             # Video üretim boru hattı komut satırı tetikleyicisi
-├── test_video_router.py        # OpenMontage sağlayıcı ve politika doğrulama testi
-│
-├── .vscode/settings.json       # Editör arama yolları (OpenMontage extraPaths)
-├── pyrightconfig.json          # Pyright / Pylance statik analiz yapılandırması
-├── requirements.txt            # Python bağımlılıkları
-│
-└── seriler/<series_id>/
-    ├── seri.json               # Seri temel bilgileri ve hedef kitle
-    ├── karakterler.json        # Seri geneli kalıcı karakter kimlikleri
-    ├── mekanlar.json           # Seri geneli kalıcı mekân kimlikleri
-    ├── intro/intro.json        # Seri intro tanımı
-    ├── outro/outro.json        # Seri outro tanımı
-    ├── referanslar/            # Karakter ve stil referans görselleri
-    ├── gorsel_promptlar/       # Üretilen prompt paketleri (TR/EN)
-    └── bolumler/<NNN>_<slug>/
-        ├── hikaye.txt          # Kaynak hikâye metni
-        ├── senaryo.json        # Sahne listesi ve diyaloglar
-        └── final_video.mp4     # Birleştirilmiş nihai bölüm videosu
+app.py                    # tek akışlı Streamlit uygulaması (ana giriş)
+uretim_isci.py            # arka plan üretim işçisi + durum JSON'u
+senaryo_motoru.py         # Mistral/Claude: fikir, varlık çıkarımı, sahne üretimi
+senaryo_modelleri.py      # Pydantic sözleşmeleri
+seri_deposu.py            # seri/katalog/senaryo disk deposu
+medya_motoru.py           # Gemini + Runway/Veo + FFmpeg + ElevenLabs/fal.ai
+formatlar.py              # kısa/orta/uzun format ve tür tanımları
+video_provider_router.py  # OpenMontage sağlayıcı fallback'i
+video_provider_policy.json
+senaryo_studyo.py         # gelişmiş/legacy seri-bölüm arayüzü
+test_*.py                 # çevrimdışı testler
+
+seriler/<proje>/
+  seri.json, karakterler.json, mekanlar.json
+  referanslar/            # karakter referans portreleri
+  gorseller/, sesler/, klipler/, medya/
+  bolumler/001_video/     # hikaye.txt + senaryo.json
+  final_video.mp4, final.srt, uretim_durum.json
 ```
 
----
+## Testler
 
-## ⚙️ Kurulum
-
-### 1. Python Sanal Ortamı ve Paketler
-
-Python 3.10 veya üzeri önerilir:
+Tek komut (ruff + mypy + unittest):
 
 ```bash
-# Sanal ortam oluşturun ve aktif edin
-python -m venv venv
-.\venv\Scripts\activate   # Windows
-
-# Bağımlılıkları yükleyin
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
+venv\Scripts\python.exe check.py     # OK: ruff + mypy + unittest geçti.
 ```
 
-### 2. Harici Sistem Gereksinimi: FFmpeg
+Ayrı ayrı:
 
-Video ve ses birleştirme işlemleri için sisteminizde `ffmpeg` kurulu ve sistem ortam değişkenlerine (`PATH`) eklenmiş olmalıdır:
 ```bash
-ffmpeg -version
+venv\Scripts\python.exe -m unittest discover -v
+venv\Scripts\python.exe -m ruff check .
+venv\Scripts\python.exe -m mypy          # dosya listesi pyproject.toml'da
 ```
 
-### 3. OpenMontage Reposu ve Entegrasyonu
+Testler LLM ve ücretli API çağrılarını mock'lar; FFmpeg testleri gerçek ffmpeg kullanır, yoksa atlanır. Gerçek Runway/Veo çağrısı testlerde yapılmaz (maliyet).
 
-Video üretiminde çoklu sağlayıcı (Runway, Veo, Gemini Omni, Sora vb.) desteği için **OpenMontage** reposu kullanılır.
+## Birleştirme notu
 
-1. **Repo Konumu:**
-   OpenMontage reposunu proje dizininin yanına veya masaüstüne yerleştirin:
-   - Varsayılan konum: `C:\Users\fikret\Desktop\OpenMontage` (veya `../OpenMontage`)
-2. **Sanal Ortama Bağlama (.pth):**
-   IDE ve Python'un OpenMontage araçlarını doğrudan bulabilmesi için `venv\Lib\site-packages\openmontage.pth` dosyasına OpenMontage klasör yolu yazılmıştır:
-   ```text
-   C:\Users\fikret\Desktop\OpenMontage
-   ```
-3. **Alternatif Ortam Değişkeni:**
-   Farklı bir dizinde çalışıyorsanız `.env` dosyasına veya sisteminize tanımlayabilirsiniz:
-   ```bash
-   OPENMONTAGE_PATH="D:\Projeler\OpenMontage"
-   ```
+- **senaryo-video-uretim** → çekirdek modeller, depo, senaryo motoru, OpenMontage router.
+- **SenaryoAI** → Gemini görsel, ElevenLabs TTS, fal.ai hareket, FFmpeg kolaj/altyazı yaklaşımı.
+- **ai-storyboard** → storyboard/kare UX referansı; TypeScript kodu taşınmadı.
 
-### 4. Ortam Değişkenleri (`.env`)
+## Gelişmiş
 
-Proje kök dizininde bir `.env` dosyası oluşturun (`.gitignore` korumalıdır):
-
-```env
-# Senaryo ve Varlık Çıkarımı (Claude)
-ANTHROPIC_API_KEY="sk-ant-..."
-
-# Sahne Görselleri ve Gemini Video Modelleri
-GEMINI_API_KEY="AIzaSy..."
-
-# Google Cloud Text-to-Speech (Seslendirme)
-GOOGLE_APPLICATION_CREDENTIALS="C:\yol\to\gen-lang-client-credentials.json"
-
-# Video Sağlayıcıları (İhtiyaca ve policy'e göre)
-RUNWAYML_API_SECRET="key_..."
-OPENAI_API_KEY="sk-proj-..."
-
-# OpenMontage Yolu (Gerekirse)
-OPENMONTAGE_PATH="C:\Users\fikret\Desktop\OpenMontage"
-VIDEO_PROVIDER_POLICY="video_provider_policy.json"
-```
-
----
-
-## 🚀 Kullanım
-
-### 1. Senaryo Stüdyosu (Web UI)
-
-Hikâyeyi girmek, karakterleri/mekânları onaylamak ve senaryo üretmek için Streamlit arayüzünü başlatın:
+Seri/bölüm bazlı çoklu bölüm yönetimi ve görsel prompt paketleri için:
 
 ```bash
 streamlit run senaryo_studyo.py
 ```
-
-**Adımlar:**
-1. **Seri Oluştur:** Ad, hedef kitle ve görsel stil belirleyin.
-2. **Karakter ve Mekânları Tanımla:** Varlıkları oluşturun ve referans görsellerini yükleyin.
-3. **Hikâyeyi Sahneleştir:** Kaynak metni girin; LLM sahneleri, diyalogları ve promptları üretsin.
-4. **Görsel Prompt Paketi:** Tüm sahneler için Türkçe veya İngilizce prompt paketini dışa aktarın.
-
-### 2. Video Üretim Hattı (Pipeline)
-
-Hazırlanan senaryodan tam video (sahne görselleri + seslendirme + video üretimi + montaj) oluşturmak için:
-
-```bash
-# Belirli bir senaryo dosyası üzerinden üretim:
-python video_uretim.py seriler/pamuk_tiltu_ve_kiko_orman_dostlari/bolumler/001_pamuk_un_kaybolan_havuclari/senaryo.json
-
-# Veya varsayılan senaryo ile:
-python video_motoru_openmontage.py
-```
-
-**Üretim Aşamaları:**
-1. **Seslendirme (TTS):** Her sahnenin anlatıcı ve diyalog sesleri Google Cloud TTS ile oluşturulur.
-2. **Sahne Görseli:** Gemini / Imagen ile karakter referansları dikkate alınarak yüksek çözünürlüklü sahne karesi oluşturulur (`_sahne.png`).
-3. **OpenMontage Router:** Sahne görseli ve video promptu `video_provider_router.py` aracılığıyla sıradaki video modeline iletilir.
-4. **Montaj:** Sahne videosu ve ses dosyaları `ffmpeg` ile birleştirilir; bölümün tüm sahneleri sırayla nihai videoda toplanır.
-
-### 3. OpenMontage Sağlayıcı ve Politika Testi
-
-Kayıtlı video sağlayıcılarının durumunu ve fallback politikasını test etmek için:
-
-```bash
-python test_video_router.py
-```
-
-Örnek çıktı:
-```text
-[CHECK] OpenMontage: C:\Users\fikret\Desktop\OpenMontage
-[CHECK] Registry video provider sayısı: 26
-[CHECK] Kullanılabilir providerlar: ['ark', 'cogvideo', 'gemini_omni', 'kling', 'openai', 'runway', 'veo', 'wan', ...]
-[CHECK] Policy sırası: runway -> veo -> gemini_omni -> openai
-[PASS] Policy'deki tüm providerlar kullanılabilir.
-```
-
-### 4. Senaryo Doğrulama Testleri
-
-Çevrimdışı Pydantic ve mantıksal doğrulama testlerini çalıştırmak için:
-
-```bash
-python -m pytest test_senaryo_studyo.py -v
-```
-
----
-
-## 🔄 Video Sağlayıcı Fallback Politikası (`video_provider_policy.json`)
-
-Pipeline, tek bir video sağlayıcısına bağımlı kalmaz. `video_provider_policy.json` dosyası üzerinden öncelik sırası ve hata toleransı yönetilir:
-
-- **Öncelik Sırası (`preferred_order`):**
-  1. `runway` (Runway Gen-3 / Gen-4)
-  2. `veo` (Google Veo)
-  3. `gemini_omni` (Gemini Omni video)
-  4. `openai` (Sora 2)
-- **Hata Yönetimi:**
-  - Kota dolduğunda (`429`, `insufficient credits`, `quota_exhausted`), yetkilendirme hatasında veya servis kapalı olduğunda otomatik olarak bir sonraki sağlayıcıya geçer (`next_provider`).
-  - Geçici ağ hatalarında 1 kez yeniden dener (`retry_then_next`).
-  - Sahne görseli (`_sahne.png`) korunur; fallback sırasında görsel yeniden üretilmez, böylece hem bütçe hem de görsel süreklilik korunur.

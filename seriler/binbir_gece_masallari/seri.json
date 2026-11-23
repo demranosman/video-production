@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "series_id": "binbir_gece_masallari",
+  "name": "Binbir Gece Masalları",
+  "description": "Bibir gece masallarından seçme kikayeler.",
+  "target_audience": "Gençlik",
+  "language": "tr",
+  "visual_style": "Sinematik 3D animasyon, yumuşak ışık, canlı renkler",
+  "default_aspect_ratio": "16:9",
+  "genre": "genel",
+  "format": "orta",
+  "target_duration_sec": 180,
+  "created_at": ""
+}

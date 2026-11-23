@@ -1,23 +1,28 @@
-"""Claude ile karakter/mekân çıkarımı ve sahne üretimi.
+"""Mistral/Claude ile karakter/mekân çıkarımı ve sahne üretimi.
 
 LLM yalnızca ham JSON üretir; katalogla eşleştirme ve doğrulama saf Python
 fonksiyonlarında yapılır, böylece bu kısımlar API olmadan test edilebilir.
+
+Sağlayıcı seçimi: `LLM_PROVIDER=mistral|claude`. Boşsa MISTRAL_API_KEY varsa
+Mistral, yoksa ANTHROPIC_API_KEY varsa Claude kullanılır.
 """
 from __future__ import annotations
 
 import json
 import os
-import re
 
 import anthropic
+import requests
 from dotenv import load_dotenv
 
+import formatlar
 import senaryo_modelleri as modeller
 from seri_deposu import slugify
 
 load_dotenv()
 
 LLM_MODEL = "claude-sonnet-5"
+MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions"
 
 _TURKCE_NORM = str.maketrans({
     "ç": "c", "Ç": "c", "ğ": "g", "Ğ": "g", "ı": "i", "İ": "i",
@@ -53,7 +58,55 @@ _JSON_UYARISI = (
 )
 
 
-def _llm_metin(system: str, user: str) -> str:
+def llm_saglayici() -> str:
+    """Kullanılacak LLM sağlayıcısını döner: mistral | claude.
+
+    Seçilen sağlayıcının anahtarı yoksa diğerine düşer; ikisi de yoksa hata verir.
+    """
+    secim = os.environ.get("LLM_PROVIDER", "").strip().lower()
+    mistral_var = bool(os.environ.get("MISTRAL_API_KEY", "").strip())
+    claude_var = bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
+    if secim == "mistral":
+        return "mistral" if mistral_var or not claude_var else "claude"
+    if secim == "claude":
+        return "claude" if claude_var or not mistral_var else "mistral"
+    if mistral_var:
+        return "mistral"
+    if claude_var:
+        return "claude"
+    raise ValueError("MISTRAL_API_KEY veya ANTHROPIC_API_KEY ortam değişkeni ayarlanmalı.")
+
+
+def _mistral_metin(system: str, user: str, json_modu: bool = False) -> str:
+    api_key = os.environ.get("MISTRAL_API_KEY", "").strip()
+    if not api_key:
+        raise ValueError("MISTRAL_API_KEY ortam değişkeni ayarlanmalı.")
+    payload: dict = {
+        "model": os.environ.get("MISTRAL_MODEL", "mistral-large-latest"),
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": 0.25 if json_modu else 0.7,
+        "max_tokens": int(os.environ.get("MISTRAL_MAX_TOKENS", "8192")),
+    }
+    if json_modu:
+        payload["response_format"] = {"type": "json_object"}
+    response = requests.post(
+        MISTRAL_URL,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=300,
+    )
+    if response.status_code != 200:
+        raise ValueError(f"Mistral hatası (HTTP {response.status_code}): {response.text[:500]}")
+    try:
+        return response.json()["choices"][0]["message"]["content"] or ""
+    except (KeyError, IndexError, TypeError) as hata:
+        raise ValueError(f"Mistral yanıtı beklenmeyen biçimde: {hata}") from hata
+
+
+def _claude_metin(system: str, user: str) -> str:
     client = _client()
     with client.messages.stream(
         model=LLM_MODEL,
@@ -65,20 +118,26 @@ def _llm_metin(system: str, user: str) -> str:
         return stream.get_final_text() or ""
 
 
+def _llm_metin(system: str, user: str, json_modu: bool = False) -> str:
+    if llm_saglayici() == "mistral":
+        return _mistral_metin(system, user, json_modu)
+    return _claude_metin(system, user)
+
+
 def _llm_json(system: str, user: str, deneme: int = 2) -> dict:
     """JSON ayrıştırılamazsa modeli sıkı bir uyarıyla yeniden dener."""
     son_hata: Exception | None = None
     for _ in range(deneme):
-        text = _llm_metin(system, user)
+        text = _llm_metin(system, user, json_modu=True)
         if not text:
-            son_hata = ValueError("Claude yanıtında JSON bulunamadı.")
+            son_hata = ValueError("Model yanıtında JSON bulunamadı.")
         else:
             try:
                 return _temiz_json(text)
             except json.JSONDecodeError as hata:
                 son_hata = hata
         user = user + _JSON_UYARISI
-    raise ValueError(f"Claude geçerli JSON döndürmedi: {son_hata}")
+    raise ValueError(f"Model geçerli JSON döndürmedi: {son_hata}")
 
 
 # --- Saf eşleştirme (API'siz test edilebilir) ---
@@ -104,35 +163,86 @@ def mekan_esle(ad: str, mekanlar: list[modeller.Mekan]) -> str | None:
     return None
 
 
+# --- LLM: fikir genişletme ---
+def fikir_genislet(
+    fikir: str,
+    tur: str = "genel",
+    format: str = "orta",
+    tarz: str = "",
+    hedef_kitle: str = "",
+) -> dict:
+    """Kısa bir fikri, senaryolaştırılabilir bir hikâye metnine çevirir."""
+    if not fikir.strip():
+        raise ValueError("Fikir metni boş olamaz.")
+    tur_ayari = formatlar.tur_ayari(tur)
+    format_ayari = formatlar.format_ayari(format)
+    min_sahne, max_sahne = format_ayari["sahne"]
+    sistem = f"""
+Sen bir senaryo editörüsün. Kısa bir fikri, video için sahnelenebilir bir hikâye metnine çevir.
+
+Tür: {tur_ayari['ad']}
+Format: {format_ayari['ad']}
+Hedef kitle: {hedef_kitle or 'genel izleyici'}
+Görsel tarz: {tarz or 'sinematik'}
+
+YALNIZCA geçerli JSON döndür:
+{{
+  "title": "Kısa, çekici başlık",
+  "logline": "Tek cümlelik özet",
+  "story": "Hikâye metni; olaylar sırasıyla, net ve sahnelenebilir"
+}}
+
+KURALLAR:
+- Hikâye {min_sahne}-{max_sahne} sahneye bölünebilecek kadar olay içersin.
+- Yaklaşık {format_ayari['sure_sn'][0]}-{format_ayari['sure_sn'][1]} saniyelik anlatıma yetecek uzunlukta yaz.
+- {tur_ayari['kural']}
+- Yalnızca JSON döndür; Markdown/açıklama ekleme.
+"""
+    sonuc = _llm_json(sistem, fikir)
+    hikaye = str(sonuc.get("story", "")).strip()
+    if not hikaye:
+        raise ValueError("Model hikâye metni üretmedi.")
+    return {
+        "title": str(sonuc.get("title", "")).strip() or "Adsız proje",
+        "logline": str(sonuc.get("logline", "")).strip(),
+        "story": hikaye,
+    }
+
+
 # --- LLM: karakter ve mekân çıkarımı ---
-_VARLIK_CKARIM_SISTEM = """
-Sen bir çocuk masalı editörüsün. Kaynak hikâyedeki karakterleri ve mekânları çıkar.
+def _varlik_cikarim_sistem(tur: str = "genel") -> str:
+    tur_ayari = formatlar.tur_ayari(tur)
+    return f"""
+Sen bir senaryo editörüsün. Kaynak hikâyedeki görünen karakterleri ve mekânları çıkar.
+
+Tür: {tur_ayari['ad']}
+Türe özgü kural: {tur_ayari['kural']}
 
 YALNIZCA geçerli JSON döndür (açıklama ekleme). Şema:
-{
+{{
   "characters": [
-    {
+    {{
       "name": "Karakterin hikâyedeki adı",
       "type": "Tavşan/Papağan/İnsan vb.",
       "role": "main|recurring|supporting|guest",
       "aliases": [],
-      "visual_identity": {"body":"","fur_or_skin":"","face":"","eyes":"","distinctive_features":""},
+      "visual_identity": {{"body":"","fur_or_skin":"","face":"","eyes":"","distinctive_features":""}},
       "default_clothing": "",
       "personality": [],
       "speech_style": "",
       "voice_description": "",
       "consistency_rules": []
-    }
+    }}
   ],
   "locations": [
-    {
+    {{
       "name": "Mekânın adı",
       "aliases": [],
-      "visual_identity": {"environment":"","ground":"","landmarks":[],"color_palette":[],"default_lighting":"","atmosphere":""},
+      "visual_identity": {{"environment":"","ground":"","landmarks":[],"color_palette":[],"default_lighting":"","atmosphere":""}},
       "consistency_rules": []
-    }
+    }}
   ]
-}
+}}
 
 KURALLAR:
 - name alanına YALNIZCA düz karakter/mekân adını yaz (sıfat/açıklama ekleme).
@@ -141,19 +251,14 @@ KURALLAR:
 - Kaynakta olmayan karakter veya mekân uydurma.
 - Görsel kimlik sabit ve çekime bağlı olmayan özellikleri tarif etsin
   (renk, boyut, kalıcı fiziksel özellikler); geçici durumları yazma.
-- Masal kahramanı bir HAYVAN ise (tavşan, tilki, papağan, kedi, ejderha vb.) ona
-  sevimli İNSANSİ KIYAFETLER giydir: yelek, elbise, tulum, şapka, atkı, ceket vb.
-  Bu kıyafeti default_clothing alanına yaz. Hayvan karakterleri çıplak/doğal tüy
-  halinde bırakma. Tür+renk kimliği visual_identity'de, kıyafet default_clothing'de
-  AYRI tutulur; ikisi de kalıcıdır.
 - Yanıt sadece bu JSON olsun.
 """
 
 
-def varlik_cikar(kaynak_metin: str) -> dict:
+def varlik_cikar(kaynak_metin: str, tur: str = "genel") -> dict:
     if not kaynak_metin.strip():
         raise ValueError("Hikâye metni boş olamaz.")
-    return _llm_json(_VARLIK_CKARIM_SISTEM, kaynak_metin)
+    return _llm_json(_varlik_cikarim_sistem(tur), kaynak_metin)
 
 
 def cikarilanlari_esle(
@@ -231,6 +336,15 @@ def adaydan_mekan(ham: dict, series_id: str, first_seen_episode: int) -> modelle
 
 # --- LLM: sahne üretimi ---
 def _sahne_uret_sistem(seri: modeller.Seri, karakterler: list[modeller.Karakter], mekanlar: list[modeller.Mekan]) -> str:
+    try:
+        tur = formatlar.tur_ayari(seri.genre)
+    except ValueError:
+        tur = formatlar.tur_ayari("genel")
+    fmt = formatlar.format_ayari(seri.format)
+    min_sahne, max_sahne = fmt["sahne"]
+    min_sure, max_sure = fmt["sahne_sure_sn"]
+    hedef_sure = seri.target_duration_sec or fmt["sure_sn"][0]
+
     karakter_blok = json.dumps(
         [
             {
@@ -258,10 +372,18 @@ def _sahne_uret_sistem(seri: modeller.Seri, karakterler: list[modeller.Karakter]
         ensure_ascii=False, indent=2,
     )
     return f"""
-Sen çocuk masalı senaristsin. Kaynak hikâyeyi sahnelere böl.
+Sen bir video senaristisin. Kaynak hikâyeyi sahnelere böl.
 
 Seri: {seri.name}
-Görsel tarz: {seri.visual_style or 'Cinematic 3D animasyon'}
+Tür: {tur['ad']}
+Format: {fmt['ad']}
+Hedef toplam süre: ~{hedef_sure} saniye
+Hedef sahne sayısı: {min_sahne}-{max_sahne}
+Sahne başına süre: {min_sure}-{max_sure} saniye
+En-boy oranı: {seri.default_aspect_ratio}
+Görsel tarz: {seri.visual_style or 'Cinematic'}
+Türe özgü kural: {tur['kural']}
+Ritim: {fmt['ritim']}
 
 KULLANILABİLİR KARAKTERLER (yalnızca bu character_id değerlerini kullan):
 {karakter_blok}
@@ -282,9 +404,11 @@ YALNIZCA geçerli JSON döndür. Şema:
       "character_states": {{ "character_id": {{"emotion":"","action":"","temporary_clothing":null}} }},
       "location_state": {{"time_of_day":"","weather":"","temporary_details":[]}},
       "story_event": "Bu sahnede ne olur",
-      "narration": "Anlatıcı metni (kaynak akışına sadık)",
+      "narration": "Anlatıcının okuyacağı metin (kaynağa sadık; replikleri YAZMA)",
       "dialogue": [ {{"character_id":"","line":""}} ],
-      "visual_description": "Görsel kompozisyon tarifi",
+      "visual_description": "Görsel kompozisyon tarifi (Türkçe)",
+      "image_prompt": "Gemini için İngilizce sinematik görsel komut",
+      "motion": "zoom in | zoom out | pan left | pan right | none",
       "estimated_duration_sec": 10
     }}
   ]
@@ -292,21 +416,22 @@ YALNIZCA geçerli JSON döndür. Şema:
 
 KURALLAR:
 - Hikâyedeki olayları SIRASIYLA sahnelere böl; kaynakta olmayan olay/diyalog uydurma.
-- narration ve dialogue kaynağı başka cümlelerle özetleyip iyileştirme; olduğu gibi taşı.
-- Her sahne tek ana olaya odaklansın; estimated_duration_sec 5-20 arasında olsun.
+- narration, anlatıcının okuyacağı metindir; sahnedeki replikleri narration'a YAZMA,
+  onları dialogue dizisine koy. Kaynağı başka cümlelerle özetleyip "iyileştirme";
+  olduğu gibi taşı.
+- narration uzunluğu sahne süresiyle uyumlu olsun (Türkçede saniyede ~2,3 kelime).
+- Her sahne tek ana olaya odaklansın; estimated_duration_sec {min_sure}-{max_sure} arasında olsun.
+- Toplam süre ~{hedef_sure} saniyeye yakın olsun; sahne sayısı {min_sahne}-{max_sahne} aralığında kalsın.
 - character_ids ve location_id YALNIZCA yukarıdaki kataloglardan seçilir.
+  Karakter kataloğu boşsa character_ids boş dizi olsun; sahne mekân/konu odaklı kalsın.
 - character_states ve location_state yalnızca GEÇİCİ durumları taşır (duygu, hareket,
   hava, saat); kalıcı kimlik bilgisini buraya yazma.
-- HAYVAN karakterler (type bir hayvan türüyse) sahnelerde mutlaka default_clothing'lerini
-  (insansı kıyafet) giymiş olarak görünür. Kıyafetlerini değiştirme ve çıplak/doğal tüy
-  halinde çizme; visual_description içinde kıyafeti de tarif et.
-- visual_description yazarken karakterin visual_identity ve default_clothing değerlerini
-  OLDUĞU GİBİ kullan (renk, tüy/kürk, göz, ayırt edici özellik); kendi başına renk veya
-  özellik uydurma. Mekânı tarif ederken de mekânın visual_identity'sine sadık kal.
+- visual_description ve image_prompt, karakterin visual_identity ve default_clothing
+  değerlerini OLDUĞU GİBİ kullansın; yeni renk/özellik uydurma.
+- image_prompt İngilizce olsun; metin/tabela/watermark istemesin.
 - Karakterlerin ve mekânların consistency_rules maddelerine HER sahnede uy.
 - Yanıt sadece bu JSON olsun.
 """
-
 
 def sahne_uret(
     kaynak_metin: str,
@@ -315,10 +440,8 @@ def sahne_uret(
     mekanlar: list[modeller.Mekan],
     episode: modeller.Episode,
 ) -> modeller.Senaryo:
-    if not karakterler:
-        raise ValueError("Sahne üretimi için en az bir karakter kataloğu gerekli.")
-    if not mekanlar:
-        raise ValueError("Sahne üretimi için en az bir mekân kataloğu gerekli.")
+    if not karakterler and not mekanlar:
+        raise ValueError("Sahne üretimi için en az bir karakter veya mekân kataloğu gerekli.")
     sonuc = _llm_json(_sahne_uret_sistem(seri, karakterler, mekanlar), kaynak_metin)
     sahneler = [
         modeller.Sahne.model_validate(s)
@@ -555,13 +678,13 @@ def gorsel_prompt_paketi_sablon(
     for etiket, parca in (("INTRO", intro), ("OUTRO", outro)):
         if parca:
             kadro = ", ".join(karakter_adlari.get(kimlik, kimlik) for kimlik in parca.character_ids)
-            mekan = mekan_adlari.get(parca.location_id, parca.location_id)
+            mekan_adi = mekan_adlari.get(parca.location_id, parca.location_id)
             satirlar.extend([
                 f"\n## {etiket} — {seri.name}",
                 (
-                    f"{etiket.title()} keyframe, duration {parca.duration_sec} seconds; characters: {kadro}; location: {mekan}; visual: {parca.visual_description}; action: {parca.action_description}; audio mood: {parca.audio_description}; on-screen text only if specified: {parca.fixed_text}; {stil}; cinematic framing, {oran}."
+                    f"{etiket.title()} keyframe, duration {parca.duration_sec} seconds; characters: {kadro}; location: {mekan_adi}; visual: {parca.visual_description}; action: {parca.action_description}; audio mood: {parca.audio_description}; on-screen text only if specified: {parca.fixed_text}; {stil}; cinematic framing, {oran}."
                     if en else
-                    f"{etiket.title()} ana karesi, süre: {parca.duration_sec} saniye; karakterler: {kadro}; mekân: {mekan}; görsel: {parca.visual_description}; hareket: {parca.action_description}; ses atmosferi: {parca.audio_description}; yalnızca belirtilmişse ekranda metin: {parca.fixed_text}; {stil}; sinematik kadraj, {oran}."
+                    f"{etiket.title()} ana karesi, süre: {parca.duration_sec} saniye; karakterler: {kadro}; mekân: {mekan_adi}; görsel: {parca.visual_description}; hareket: {parca.action_description}; ses atmosferi: {parca.audio_description}; yalnızca belirtilmişse ekranda metin: {parca.fixed_text}; {stil}; sinematik kadraj, {oran}."
                 ), negatif,
             ])
     for senaryo in senaryolar:

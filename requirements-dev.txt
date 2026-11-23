@@ -1,0 +1,4 @@
+# Geliştirme bağımlılıkları (çalışma zamanı için requirements.txt).
+-r requirements.txt
+ruff>=0.15
+mypy>=1.11

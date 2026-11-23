@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "description": "Video provider fallback policy for the children's video pipeline.",
+  "description": "Video provider fallback policy for the scenario-to-video pipeline.",
   "preferred_order": [
-    "runway",
     "veo",
+    "runway",
     "gemini_omni",
     "openai"
   ],

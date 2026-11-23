@@ -46,7 +46,7 @@ def _seriyi_sec(yeni_series_id: str) -> None:
     st.session_state.pop("bolum_no", None)
     st.session_state.pop("bolum_baslik", None)
     for anahtar in list(st.session_state.keys()):
-        if anahtar.startswith("aday_karakter_") or anahtar.startswith("aday_mekan_"):
+        if str(anahtar).startswith(("aday_karakter_", "aday_mekan_")):
             del st.session_state[anahtar]
 
 
@@ -68,7 +68,7 @@ def _kayitli_senaryolar(series_id: str) -> list[modeller.Senaryo]:
 
 
 MEKAN_YOK = "— mekân yok —"
-DURUMLAR = ["draft", "approved", "producing", "ready", "locked", "failed"]
+DURUMLAR: list[modeller.VarlikDurumu] = ["draft", "approved", "producing", "ready", "locked", "failed"]
 
 
 def _mekan_secenekleri(mekanlar: list[modeller.Mekan], mevcut_location_id: str = ""):
@@ -183,15 +183,15 @@ with hikaye_tab:
                 raise ValueError("Bölüm başlığı boş olamaz.")
             # Önceki çıkarımdan kalan aday düzenleme anahtarlarını temizle.
             for anahtar in list(st.session_state.keys()):
-                if anahtar.startswith("aday_karakter_") or anahtar.startswith("aday_mekan_"):
+                if str(anahtar).startswith(("aday_karakter_", "aday_mekan_")):
                     del st.session_state[anahtar]
-            st.session_state.cikarilan = motor.varlik_cikar(hikaye_metni)
+            st.session_state.cikarilan = motor.varlik_cikar(hikaye_metni, seri.genre)
             st.session_state.senaryo = None
             st.session_state.bolum_no = int(bolum_no)
             st.session_state.bolum_baslik = bolum_baslik.strip()
             st.session_state.hikaye_metni = hikaye_metni
             st.rerun()
-        except Exception as hata:
+        except Exception as hata:  # noqa: BLE001
             st.error(f"Çıkarım yapılamadı: {hata}")
 
     cikarilan = st.session_state.cikarilan
@@ -246,21 +246,21 @@ with hikaye_tab:
                     if kayit["matched_character_id"]:
                         continue
                     ham = json.loads(st.session_state[f"aday_karakter_{i}"])
-                    yeni = motor.adaydan_karakter(ham, series_id, bolum_no)
-                    if yeni.character_id in var_karakter:
-                        yeni = yeni.model_copy(update={"character_id": f"{yeni.character_id}_2"})
-                    karakter_katalogu.characters.append(yeni)
-                    var_karakter.add(yeni.character_id)
+                    yeni_karakter = motor.adaydan_karakter(ham, series_id, bolum_no)
+                    if yeni_karakter.character_id in var_karakter:
+                        yeni_karakter = yeni_karakter.model_copy(update={"character_id": f"{yeni_karakter.character_id}_2"})
+                    karakter_katalogu.characters.append(yeni_karakter)
+                    var_karakter.add(yeni_karakter.character_id)
 
                 for i, kayit in enumerate(eslesen["locations"]):
                     if kayit["matched_location_id"]:
                         continue
                     ham = json.loads(st.session_state[f"aday_mekan_{i}"])
-                    yeni = motor.adaydan_mekan(ham, series_id, bolum_no)
-                    if yeni.location_id in var_mekan:
-                        yeni = yeni.model_copy(update={"location_id": f"{yeni.location_id}_2"})
-                    mekan_katalogu.locations.append(yeni)
-                    var_mekan.add(yeni.location_id)
+                    yeni_mekan = motor.adaydan_mekan(ham, series_id, bolum_no)
+                    if yeni_mekan.location_id in var_mekan:
+                        yeni_mekan = yeni_mekan.model_copy(update={"location_id": f"{yeni_mekan.location_id}_2"})
+                    mekan_katalogu.locations.append(yeni_mekan)
+                    var_mekan.add(yeni_mekan.location_id)
 
                 depo.karakterleri_kaydet(karakter_katalogu)
                 depo.mekanlari_kaydet(mekan_katalogu)
@@ -288,7 +288,7 @@ with hikaye_tab:
             )
             st.session_state.senaryo = senaryo.model_dump()
             st.rerun()
-        except Exception as hata:
+        except Exception as hata:  # noqa: BLE001
             st.error(f"Sahne üretilemedi: {hata}")
 
     if st.session_state.senaryo is not None:
@@ -326,7 +326,7 @@ with hikaye_tab:
                         "Aynı bölüm numarası için başka klasör(ler) de var: "
                         f"{', '.join(eski_klasorler)}. Başlık değiştiyse eski klasörü elle silin."
                     )
-            except Exception as hata:
+            except Exception as hata:  # noqa: BLE001
                 st.error(f"Senaryo kaydedilemedi: {hata}")
 
 # ============================================================
@@ -356,12 +356,12 @@ with bolumler_tab:
             )
             if st.button("Bölüm senaryosunu kaydet", type="primary", icon=":material/save:"):
                 try:
-                    yeni = modeller.Senaryo.model_validate(json.loads(duzenlenen))
+                    yeni_senaryo = modeller.Senaryo.model_validate(json.loads(duzenlenen))
                     depo.senaryo_kaydet(
-                        yeni, _karakter_katalogu(), _mekan_katalogu(), bolum["slug"]
+                        yeni_senaryo, _karakter_katalogu(), _mekan_katalogu(), bolum["slug"]
                     )
                     st.success("Bölüm senaryosu kaydedildi.")
-                except Exception as hata:
+                except Exception as hata:  # noqa: BLE001
                     st.error(f"Kaydedilemedi: {hata}")
         else:
             st.caption("Bu bölümde senaryo yok.")
@@ -381,22 +381,22 @@ with karakter_tab:
         try:
             depo.karakterleri_kaydet(modeller.KarakterKatalogu.model_validate(json.loads(ham)))
             st.success("Karakter kataloğu kaydedildi.")
-        except Exception as hata:
+        except Exception as hata:  # noqa: BLE001
             st.error(f"Kaydedilemedi: {hata}")
 
 with mekan_tab:
-    katalog = _mekan_katalogu()
+    katalog_mekan = _mekan_katalogu()
     st.caption("Mekân kataloğu — kalıcı kimlikler (seri seviyesinde saklanır)")
     ham = st.text_area(
         "Mekânlar JSON",
-        json.dumps(katalog.model_dump(), ensure_ascii=False, indent=2),
+        json.dumps(katalog_mekan.model_dump(), ensure_ascii=False, indent=2),
         height=420,
     )
     if st.button("Mekânları kaydet", icon=":material/save:"):
         try:
             depo.mekanlari_kaydet(modeller.MekanKatalogu.model_validate(json.loads(ham)))
             st.success("Mekân kataloğu kaydedildi.")
-        except Exception as hata:
+        except Exception as hata:  # noqa: BLE001
             st.error(f"Kaydedilemedi: {hata}")
 
 # ============================================================
@@ -416,7 +416,7 @@ with intro_tab:
     )
     with st.form("intro_form"):
         sure = st.number_input("Süre (sn)", min_value=1, value=(mevcut_intro.duration_sec if mevcut_intro else 5))
-        kadro = st.multiselect("Intro karakterleri", list(karakter_secenek), format_func=karakter_secenek.get, default=(mevcut_intro.character_ids if mevcut_intro else []))
+        kadro = st.multiselect("Intro karakterleri", list(karakter_secenek), format_func=lambda x: karakter_secenek.get(x, x), default=(mevcut_intro.character_ids if mevcut_intro else []))
         durum = st.selectbox("Durum", DURUMLAR, index=(DURUMLAR.index(mevcut_intro.status) if mevcut_intro else 0), key="intro_durum")
         mekan = st.selectbox("Mekân (opsiyonel)", mekan_secenekleri, format_func=lambda x: mekan_etiket.get(x, x), index=mekan_index, key="intro_mekan")
         sabit_metin = st.text_input("Sabit başlık", value=(mevcut_intro.fixed_text if mevcut_intro else seri.name))
@@ -446,7 +446,7 @@ with intro_tab:
             )
             depo.intro_kaydet(intro, _karakter_katalogu(), _mekan_katalogu())
             st.success(f"Intro tanımı kaydedildi (revizyon {intro.revision}).")
-        except Exception as hata:
+        except Exception as hata:  # noqa: BLE001
             st.error(f"Kaydedilemedi: {hata}")
     st.caption(
         ":material/info: Durum elle işaretlenir; hiçbir durumda düzenleme kısıtlanmaz. "
@@ -467,7 +467,7 @@ with outro_tab:
     )
     with st.form("outro_form"):
         sure = st.number_input("Süre (sn)", min_value=1, value=(mevcut_outro.duration_sec if mevcut_outro else 7))
-        kadro = st.multiselect("Outro karakterleri", list(karakter_secenek), format_func=karakter_secenek.get, default=(mevcut_outro.character_ids if mevcut_outro else []))
+        kadro = st.multiselect("Outro karakterleri", list(karakter_secenek), format_func=lambda x: karakter_secenek.get(x, x), default=(mevcut_outro.character_ids if mevcut_outro else []))
         durum = st.selectbox("Durum", DURUMLAR, index=(DURUMLAR.index(mevcut_outro.status) if mevcut_outro else 0), key="outro_durum")
         mekan = st.selectbox("Mekân (opsiyonel)", mekan_secenekleri, format_func=lambda x: mekan_etiket.get(x, x), index=mekan_index, key="outro_mekan")
         veda = st.text_input("Sabit veda metni", value=(mevcut_outro.fixed_text if mevcut_outro else ""))
@@ -499,7 +499,7 @@ with outro_tab:
             )
             depo.outro_kaydet(outro, _karakter_katalogu(), _mekan_katalogu())
             st.success(f"Outro tanımı kaydedildi (revizyon {outro.revision}).")
-        except Exception as hata:
+        except Exception as hata:  # noqa: BLE001
             st.error(f"Kaydedilemedi: {hata}")
     st.caption(
         ":material/info: Durum elle işaretlenir; hiçbir durumda düzenleme kısıtlanmaz. "
@@ -518,7 +518,7 @@ with gorsel_tab:
     dil = st.segmented_control(
         "Çıktı dili", {"tr": "Türkçe", "en": "English"},
         default="tr", key="gorsel_prompt_dili",
-    )
+    ) or "tr"
     paket = st.session_state.gorsel_prompt_paketi
     if not paket or paket["dil"] != dil:
         icerik = depo.gorsel_prompt_yukle(series_id, dil)

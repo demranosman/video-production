@@ -9,11 +9,11 @@ import json
 import os
 import re
 from pathlib import Path
+from typing import Literal, cast
 
 from senaryo_modelleri import (
     Intro,
     KarakterKatalogu,
-    Mekan,
     MekanKatalogu,
     Outro,
     Senaryo,
@@ -122,10 +122,15 @@ def seri_olustur(
     language: str = "tr",
     visual_style: str = "",
     default_aspect_ratio: str = "16:9",
+    genre: str = "genel",
+    format: str = "orta",
+    target_duration_sec: int = 180,
     created_at: str = "",
 ) -> Seri:
     if not name.strip():
         raise ValueError("Seri adı boş olamaz.")
+    if format not in ("kisa", "orta", "uzun"):
+        raise ValueError(f"Geçersiz format: {format}")
     series_id = slugify(name)
     if seri_yolu(series_id).exists():
         raise ValueError(f"'{series_id}' kimlikli seri zaten mevcut.")
@@ -137,6 +142,9 @@ def seri_olustur(
         language=language.strip() or "tr",
         visual_style=visual_style.strip(),
         default_aspect_ratio=default_aspect_ratio.strip() or "16:9",
+        genre=genre.strip() or "genel",
+        format=cast(Literal["kisa", "orta", "uzun"], format.strip() or "orta"),
+        target_duration_sec=max(1, int(target_duration_sec)),
         created_at=created_at,
     )
     seri_kaydet(seri)
